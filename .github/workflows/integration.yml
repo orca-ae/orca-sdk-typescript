@@ -1,0 +1,80 @@
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: Integration
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily 06:00 UTC
+  push:
+    branches: [main]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Check integration credentials
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.gate.outputs.enabled }}
+    steps:
+      # Secrets are absent on pull requests from forks and in repositories that never configured
+      # them, which isn't a misconfiguration, and a permanently red workflow teaches everyone to
+      # ignore it: skip. Skipping leaves the integration job grey rather than green, so an
+      # unconfigured suite still can't pass for work it didn't do. One secret without the other is
+      # half a setup, though, and fails: a credential is only meaningful for the deployment that
+      # issued it.
+      - name: Decide whether the integration job can run
+        id: gate
+        env:
+          ORCA_TEST_API_KEY: ${{ secrets.ORCA_TEST_API_KEY }}
+          ORCA_TEST_BASE_URL: ${{ secrets.ORCA_TEST_BASE_URL }}
+        run: |
+          set -euo pipefail
+          # A whitespace-only value counts as unset, as it does in tests/integration/setup.ts.
+          key="$(printf '%s' "${ORCA_TEST_API_KEY:-}" | tr -d '[:space:]')"
+          url="$(printf '%s' "${ORCA_TEST_BASE_URL:-}" | tr -d '[:space:]')"
+          if [[ -n "${key}" && -n "${url}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          elif [[ -n "${key}" || -n "${url}" ]]; then
+            echo "::error::Set both the ORCA_TEST_API_KEY and ORCA_TEST_BASE_URL secrets, or neither."
+            exit 1
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Integration credentials are not configured; skipping the live round-trips."
+          fi
+
+  integration:
+    name: Live deployment round-trips
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # GitHub masks a secret only where its whole value appears, so also mask the deployment's
+      # host in case an error message prints it on its own. Masks apply per job, so this runs here.
+      - name: Mask the deployment host
+        env:
+          ORCA_TEST_BASE_URL: ${{ secrets.ORCA_TEST_BASE_URL }}
+        run: |
+          url="$(printf '%s' "${ORCA_TEST_BASE_URL}" | tr -d '[:space:]')"
+          host="${url#*://}"
+          host="${host%%/*}"
+          echo "::add-mask::${host}"
+          echo "::add-mask::${host%%:*}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+      - run: yarn install --frozen-lockfile
+      # Only the test step sees the credentials, not dependency install scripts.
+      - run: yarn test:integration
+        env:
+          ORCA_TEST_API_KEY: ${{ secrets.ORCA_TEST_API_KEY }}
+          ORCA_TEST_BASE_URL: ${{ secrets.ORCA_TEST_BASE_URL }}

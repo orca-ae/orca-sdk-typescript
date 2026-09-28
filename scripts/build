@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+node scripts/utils/sync-version.cjs
+
+rm -rf dist
+mkdir dist
+
+cp -rp src dist/
+for file in README.md LICENSE NOTICE; do
+  if [ -e "$file" ]; then cp -p "$file" dist/; fi
+done
+
+node scripts/utils/make-dist-package-json.cjs > dist/package.json
+
+yarn tsc-multi
+
+(cd dist && node -e 'const sdk = require("@orca-ae/orca-sdk"); require("node:assert/strict").equal(sdk.VERSION, require("./package.json").version)')
+(cd dist && node -e 'import("@orca-ae/orca-sdk").then(sdk => require("node:assert/strict").equal(sdk.VERSION, require("./package.json").version))')

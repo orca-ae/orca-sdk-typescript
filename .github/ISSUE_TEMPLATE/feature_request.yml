@@ -1,0 +1,40 @@
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: Feature request
+description: Suggest an improvement to the Orca TypeScript SDK.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The SDK follows the engine's API contracts. If your idea needs a new API operation or field,
+        request it in [Orca Agent Engine](https://github.com/orca-ae/orca-agent-engine/issues) first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe what you're doing and where the SDK gets in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: A sketch of the API you have in mind helps.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried or considered instead?
+  - type: dropdown
+    id: api-change
+    attributes:
+      label: Does this need a change to the engine API?
+      options:
+        - "No"
+        - "Yes"
+        - Not sure
+    validations:
+      required: true

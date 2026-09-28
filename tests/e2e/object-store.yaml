@@ -1,0 +1,113 @@
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# S3-compatible object storage for direct E2E: RustFS (Apache-2.0), pinned by digest.
+# MinIO's images stopped allowing anonymous pulls, which broke E2E. The credentials
+# below are fixture-only; nothing outside the kind cluster can reach this service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orca-managed-agents-object-store
+  namespace: __NAMESPACE__
+  labels:
+    app.kubernetes.io/name: orca-managed-agents-object-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orca-managed-agents-object-store
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orca-managed-agents-object-store
+    spec:
+      containers:
+        - name: rustfs
+          image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: s3
+              containerPort: 9000
+          env:
+            - name: RUSTFS_ACCESS_KEY
+              value: orca-e2e-access
+            - name: RUSTFS_SECRET_KEY
+              value: orca-e2e-secret-fixture
+            - name: RUSTFS_VOLUMES
+              value: /data
+            - name: RUSTFS_ADDRESS
+              value: 0.0.0.0:9000
+            - name: RUSTFS_CONSOLE_ENABLE
+              value: "false"
+          # /health/ready, not /health: /health only says the listener is up, while S3 requests
+          # return 503 until storage, IAM and locks are ready, which /health/ready checks.
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: s3
+            periodSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orca-managed-agents-object-store
+  namespace: __NAMESPACE__
+spec:
+  selector:
+    app.kubernetes.io/name: orca-managed-agents-object-store
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: s3
+---
+# Creates the engine's bucket. It runs the server's own image, which ships curl, so no separate S3
+# client image has to be pulled.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: orca-managed-agents-object-store-init
+  namespace: __NAMESPACE__
+spec:
+  backoffLimit: 12
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-bucket
+          image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RUSTFS_ACCESS_KEY
+              value: orca-e2e-access
+            - name: RUSTFS_SECRET_KEY
+              value: orca-e2e-secret-fixture
+          command:
+            - sh
+            - -ec
+            - |
+              endpoint=http://orca-managed-agents-object-store:9000
+              bucket=orca-files
+              until curl -fsS "${endpoint}/health/ready" >/dev/null; do
+                sleep 2
+              done
+              s3() {
+                curl --silent --show-error --aws-sigv4 "aws:amz:us-east-1:s3" \
+                  --user "${RUSTFS_ACCESS_KEY}:${RUSTFS_SECRET_KEY}" "$@"
+              }
+              if [ "$(s3 --head --output /dev/null --write-out '%{http_code}' "${endpoint}/${bucket}")" = 404 ]; then
+                s3 --fail --request PUT "${endpoint}/${bucket}"
+              fi
+              test "$(s3 --head --output /dev/null --write-out '%{http_code}' "${endpoint}/${bucket}")" = 200
+              echo "bucket ${bucket} is ready"

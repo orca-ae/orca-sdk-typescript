@@ -1,0 +1,75 @@
+{
+  "name": "@orca-ae/orca-sdk",
+  "version": "0.2.2",
+  "description": "TypeScript SDK for the Orca Agent Engine API",
+  "author": "The Orca Authors",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "license": "Apache-2.0",
+  "packageManager": "yarn@1.22.22",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orca-ae/orca-sdk-typescript.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "**/*"
+  ],
+  "private": false,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "./scripts/build",
+    "test": "./scripts/test",
+    "test:e2e": "node --test tests/e2e/sdk.test.cjs",
+    "test:integration": "jest --config jest.integration.config.ts",
+    "lint": "./scripts/lint",
+    "format": "./scripts/format",
+    "tsn": "ts-node -r tsconfig-paths/register",
+    "examples:quickstart": "yarn tsn examples/quickstart.ts",
+    "examples:streaming-events": "yarn tsn examples/streaming-events.ts",
+    "examples:upload-file": "yarn tsn examples/upload-file.ts",
+    "prepublishOnly": "echo 'to publish, run yarn build && (cd dist; yarn publish)' && exit 1"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@swc/core": "^1.13.0",
+    "@swc/jest": "^0.2.29",
+    "@types/jest": "^29.4.0",
+    "@types/node": "^20.17.6",
+    "@typescript-eslint/eslint-plugin": "8.31.1",
+    "@typescript-eslint/parser": "8.31.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "jest": "^29.4.0",
+    "nock": "^14.0.10",
+    "prettier": "^3.0.0",
+    "ts-node": "^10.5.0",
+    "tsc-multi": "https://github.com/stainless-api/tsc-multi/releases/download/v1.1.9/tsc-multi.tgz",
+    "tsconfig-paths": "^4.0.0",
+    "tslib": "^2.8.1",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.31.1"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./*.mjs": {
+      "default": "./dist/*.mjs"
+    },
+    "./*.js": {
+      "default": "./dist/*.js"
+    },
+    "./*": {
+      "import": "./dist/*.mjs",
+      "require": "./dist/*.js"
+    }
+  }
+}
