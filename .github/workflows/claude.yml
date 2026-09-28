@@ -1,0 +1,81 @@
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+jobs:
+  claude:
+    # Starts on an @claude mention. The first step then lets Claude run only for people with write
+    # access, and only on pull requests from branches in this repository: the action reads the
+    # branch's code and agent instructions. author_association can't gate this, because event
+    # payloads report private organization members as contributors.
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude') &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'issues' &&
+        (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+      actions: read # Required for Claude to read CI results on PRs
+    steps:
+      - name: Check who asked
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # For issue events the issue's author wrote the text Claude acts on, so check them.
+          REQUESTER: ${{ github.event_name == 'issues' && github.event.issue.user.login || github.actor }}
+          # Comments on pull requests carry no head repository, so look it up.
+          PR_NUMBER: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number || '' }}
+        run: |
+          permission=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$REQUESTER/permission" --jq .permission 2>/dev/null || echo none)
+          allowed=false
+          case "$permission" in
+            admin|write) allowed=true ;;
+            *) echo "::notice::$REQUESTER doesn't have write access; Claude runs only for maintainers." ;;
+          esac
+          if [ "$allowed" = true ] && [ -n "$PR_NUMBER" ]; then
+            cross_repo=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json isCrossRepository --jq .isCrossRepository)
+            if [ "$cross_repo" != "false" ]; then
+              allowed=false
+              echo "::notice::Pull request #$PR_NUMBER comes from a fork; Claude only runs on same-repository pull requests."
+            fi
+          fi
+          echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        if: steps.gate.outputs.allowed == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        if: steps.gate.outputs.allowed == 'true'
+        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # Lets Claude read CI results on PRs.
+          additional_permissions: |
+            actions: read

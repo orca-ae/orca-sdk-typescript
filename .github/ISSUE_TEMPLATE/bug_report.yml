@@ -1,0 +1,75 @@
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: Bug report
+description: Something in the Orca TypeScript SDK doesn't work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please don't report security vulnerabilities here.
+        Follow [SECURITY.md](https://github.com/orca-ae/orca-sdk-typescript/blob/main/SECURITY.md) instead.
+        If the engine itself returns a wrong response, report it to
+        [Orca Agent Engine](https://github.com/orca-ae/orca-agent-engine/issues).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem, and include any error message.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: The smallest piece of code, with the calls and options, that shows the problem.
+      render: ts
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SDK version or commit
+      placeholder: "0.2.2, or a commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: JavaScript runtime and version
+      placeholder: "Node.js 20.11, Bun 1.1, Deno 2.0, or a browser"
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      description: Which kind of deployment does the SDK talk to?
+      options:
+        - Self-hosted Orca Agent Engine
+        - Hosted distribution
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: "Set `logLevel: 'debug'` (or `ORCA_LOG=debug`) and paste the output. Remove API keys first."
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and didn't find this problem.
+          required: true
+        - label: This isn't a security vulnerability.
+          required: true

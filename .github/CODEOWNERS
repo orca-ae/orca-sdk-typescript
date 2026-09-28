@@ -1,0 +1,5 @@
+# Code owners review pull requests that touch their paths.
+# The last matching pattern wins, so more specific paths come later in this file.
+
+# Every pull request needs a review from one of these.
+* @sijie @freeznet @jiangpengcheng @tuteng

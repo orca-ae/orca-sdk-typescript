@@ -1,0 +1,17 @@
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/orca-ae/orca-sdk-typescript/discussions/categories/q-a
+    about: Questions about using the SDK belong in GitHub Discussions.
+  - name: Share an idea
+    url: https://github.com/orca-ae/orca-sdk-typescript/discussions/categories/ideas
+    about: Open-ended ideas, and proposals before they become an OIP.
+  - name: Report a security vulnerability
+    url: https://github.com/orca-ae/orca-sdk-typescript/security/advisories/new
+    about: Please report security issues privately, not in a public issue. See SECURITY.md.
+  - name: Report a problem with the engine
+    url: https://github.com/orca-ae/orca-agent-engine/issues
+    about: Wrong responses or behavior from the engine itself belong in Orca Agent Engine.
