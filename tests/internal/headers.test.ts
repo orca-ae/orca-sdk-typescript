@@ -1,7 +1,7 @@
 // Copyright The Orca Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { buildHeaders, isEmptyHeaders } from '@orca-ae/orca-sdk/internal/headers';
+import { buildHeaders, isEmptyHeaders } from '@runorca/orca-sdk/internal/headers';
 
 describe('buildHeaders', () => {
   it('builds from a plain object', () => {

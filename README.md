@@ -9,25 +9,26 @@ For a command-line client, see the `ork` CLI (`brew install orca-ae/tap/ork`).
 
 ## Installation
 
-Install the public package from [npmjs.org](https://www.npmjs.com/package/@orca-ae/orca-sdk).
+Install the public package from [npmjs.org](https://www.npmjs.com/package/@runorca/orca-sdk).
 No GitHub token or custom `.npmrc` is needed:
 
 ```sh
-yarn add @orca-ae/orca-sdk
+yarn add @runorca/orca-sdk
 # or
-npm install @orca-ae/orca-sdk
+npm install @runorca/orca-sdk
 ```
 
-If you previously configured `@orca-ae:registry=https://npm.pkg.github.com/` in a project or user
-`.npmrc`, remove that override (or change it to `https://registry.npmjs.org/`). Existing lockfiles
-may also need refreshing to stop resolving this package through GitHub Packages.
+If migrating from `@orca-ae/orca-sdk`, replace the dependency and import paths with
+`@runorca/orca-sdk`, then refresh the lockfile. If a project or user `.npmrc` overrides
+`@runorca:registry`, remove that override or point it to `https://registry.npmjs.org/`.
+The npm organization is `runorca`; the GitHub repository remains under `orca-ae`.
 
 Requires Node.js >= 20.
 
 ## Quickstart
 
 ```ts
-import Orca from '@orca-ae/orca-sdk';
+import Orca from '@runorca/orca-sdk';
 
 const orca = new Orca({
   apiKey: process.env.ORCA_API_KEY,
@@ -183,7 +184,7 @@ await orca.triggers.unpause(trigger.id);
 `orca.cloud.*` covers operations in the hosted extension group, served under `/apis/cloud.sn.io/v1/*` by the hosted distribution — not the core engine, so a self-hosted engine doesn't serve them. Every method throws `ExtensionNotAvailableError` when called against a deployment that doesn't advertise the `cloud.sn.io` group (checked via `GET /apis` and cached per deployment URL):
 
 ```ts
-import Orca, { ExtensionNotAvailableError } from '@orca-ae/orca-sdk';
+import Orca, { ExtensionNotAvailableError } from '@runorca/orca-sdk';
 
 try {
   const providers = await orca.cloud.agents.providers.list();
@@ -237,7 +238,7 @@ console.log(page.data);
 All errors thrown by the SDK extend `OrcaError`. HTTP errors extend `APIError` and carry `.status`, `.headers`, and `.error` fields.
 
 ```ts
-import Orca, { OrcaError, APIError, NotFoundError, RateLimitError } from '@orca-ae/orca-sdk';
+import Orca, { OrcaError, APIError, NotFoundError, RateLimitError } from '@runorca/orca-sdk';
 
 try {
   await orca.agents.retrieve('missing_id');

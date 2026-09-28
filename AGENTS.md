@@ -1,6 +1,6 @@
 # Orca TypeScript SDK: instructions for coding agents
 
-This file is for AI coding agents such as Claude Code, Codex, Copilot and Cursor, and it doubles as the conventions guide for anyone adding code to `@orca-ae/orca-sdk`. People should start with [CONTRIBUTING.md](CONTRIBUTING.md).
+This file is for AI coding agents such as Claude Code, Codex, Copilot and Cursor, and it doubles as the conventions guide for anyone adding code to `@runorca/orca-sdk`. People should start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 `CLAUDE.md` is a symlink to this file. **Always edit `AGENTS.md`, never `CLAUDE.md`.** A write that replaces the file would turn the symlink into a copy.
 
@@ -253,7 +253,7 @@ File-typed fields use the `Uploadable` type. Callers can pass a `File`, a `Blob`
 - Environment variables: `ORCA_API_KEY`, `ORCA_BASE_URL`, `ORCA_LOG`.
 - Error classes: `OrcaError`, `ExtensionNotAvailableError`, `APIError`, `APIConnectionError`, `APIConnectionTimeoutError`, `APIUserAbortError`, `NotFoundError`, `ConflictError`, `RateLimitError`, `BadRequestError`, `AuthenticationError`, `InternalServerError`, `PermissionDeniedError`, `UnprocessableEntityError`.
 - The `orca.cloud.*` extension group name is `cloud.sn.io`, single-sourced as `CLOUD_EXTENSION_GROUP` in `src/internal/constants.ts`. In prose (docs, READMEs, doc comments), call it the hosted extension group.
-- Package: `@orca-ae/orca-sdk`.
+- Package: `@runorca/orca-sdk`.
 - Public surface uses `orca.<resource>` (camelCase property names mounted on the client).
 
 ## 12. JSDoc

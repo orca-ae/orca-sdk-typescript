@@ -1,6 +1,6 @@
 # Surface status
 
-This document tracks which Orca API surfaces have SDK coverage in `@orca-ae/orca-sdk` and what is intentionally absent today. It is updated whenever an operation lands or is removed.
+This document tracks which Orca API surfaces have SDK coverage in `@runorca/orca-sdk` and what is intentionally absent today. It is updated whenever an operation lands or is removed.
 
 Three specs plus a deployment overlay govern the surface (see `AGENTS.md` §1): `openapi/managed-agents.yaml` defines core operations, `openapi/managed-agents-deployment.overlay.yaml` records core portability differences, `openapi/managed-agents-extensions.yaml` defines the engine-owned policy and pricing extension groups, and `openapi/cloud-extensions.yaml` governs `orca.cloud.*`.
 

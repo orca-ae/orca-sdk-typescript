@@ -11,7 +11,7 @@ import {
   type Guardrail,
   type ModelPrice,
   type Orca,
-} from '@orca-ae/orca-sdk';
+} from '@runorca/orca-sdk';
 import { describeIfCredentials, getTestClient, getTestPrefix, supportsExtension } from './setup';
 
 describeIfCredentials('Policy and pricing extensions (integration)', () => {

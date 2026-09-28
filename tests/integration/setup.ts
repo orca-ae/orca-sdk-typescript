@@ -15,7 +15,7 @@
 
 jest.setTimeout(60_000);
 
-import { ExtensionNotAvailableError, Orca } from '@orca-ae/orca-sdk';
+import { ExtensionNotAvailableError, Orca } from '@runorca/orca-sdk';
 
 // A whitespace-only value counts as unset.
 const apiKey = process.env['ORCA_TEST_API_KEY']?.trim() ?? '';

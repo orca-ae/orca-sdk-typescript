@@ -14,7 +14,7 @@ describe('publishing a release', () => {
   let run: jest.Mock;
   let log: jest.Mock;
   const pkg = {
-    name: '@orca-ae/orca-sdk',
+    name: '@runorca/orca-sdk',
     version: '0.2.2',
     repository: { url: 'https://github.com/orca-ae/orca-sdk-typescript.git' },
     publishConfig: { registry: REGISTRY, access: 'public' },
@@ -64,8 +64,8 @@ describe('publishing a release', () => {
       REGISTRY,
     ]);
     expect(fetchMetadata.mock.calls.map(([url]) => url)).toEqual([
-      `${REGISTRY}@orca-ae%2Forca-sdk/0.2.2`,
-      `${REGISTRY}@orca-ae%2Forca-sdk/latest`,
+      `${REGISTRY}@runorca%2Forca-sdk/0.2.2`,
+      `${REGISTRY}@runorca%2Forca-sdk/latest`,
     ]);
     expect(fs.existsSync(run.mock.calls[0][1][4])).toBe(false);
   });
@@ -153,6 +153,15 @@ describe('publishing a release', () => {
         '@orca-ae:registry': 'https://npm.pkg.github.com/',
       },
     },
+    {
+      publishConfig: {
+        registry: REGISTRY,
+        access: 'public',
+        '@runorca:registry': 'https://npm.pkg.github.com/',
+      },
+    },
+    { name: '@orca-ae/orca-sdk' },
+    { repository: { url: 'https://github.com/runorca/orca-sdk-typescript.git' } },
     { repository: { url: 'https://github.com/other/repo.git' } },
     { name: '@other/package' },
     { private: true },

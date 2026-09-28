@@ -1,7 +1,7 @@
 // Copyright The Orca Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { toFile } from '@orca-ae/orca-sdk/internal/to-file';
+import { toFile } from '@runorca/orca-sdk/internal/to-file';
 
 async function* makeAsyncIterable(chunks: string[]) {
   for (const chunk of chunks) {

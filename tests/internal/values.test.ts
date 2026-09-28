@@ -10,7 +10,7 @@ import {
   pop,
   safeJSON,
   validatePositiveInteger,
-} from '@orca-ae/orca-sdk/internal/utils/values';
+} from '@runorca/orca-sdk/internal/utils/values';
 
 describe('safeJSON', () => {
   it('parses valid JSON', () => {

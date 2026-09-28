@@ -7,7 +7,7 @@
  */
 
 import { describeIfCredentials, getTestClient, supportsExtension } from './setup';
-import type { Orca } from '@orca-ae/orca-sdk';
+import type { Orca } from '@runorca/orca-sdk';
 
 describeIfCredentials('Cloud extensions (integration)', () => {
   let client: Orca;

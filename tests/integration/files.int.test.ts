@@ -13,8 +13,8 @@ import {
   getTestClient,
   getTestPrefix,
 } from './setup';
-import { toFile } from '@orca-ae/orca-sdk';
-import type { FileMetadata, Orca } from '@orca-ae/orca-sdk';
+import { toFile } from '@runorca/orca-sdk';
+import type { FileMetadata, Orca } from '@runorca/orca-sdk';
 
 describeIfCredentials('Files (integration)', () => {
   let client: Orca;

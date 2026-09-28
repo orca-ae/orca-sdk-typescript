@@ -31,7 +31,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              regex: '^@orca-ae/orca-sdk(/.*)?',
+              regex: '^@runorca/orca-sdk(/.*)?',
               message: 'Use a relative import, not a package import.',
             },
           ],

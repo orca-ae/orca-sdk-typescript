@@ -14,7 +14,7 @@ import {
   getTestPrefix,
   cleanupCreatedAgents,
 } from './setup';
-import type { Agent, Orca } from '@orca-ae/orca-sdk';
+import type { Agent, Orca } from '@runorca/orca-sdk';
 
 describeIfCredentials('Agents (integration)', () => {
   let client: Orca;

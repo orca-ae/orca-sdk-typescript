@@ -20,5 +20,5 @@ node scripts/utils/make-dist-package-json.cjs > dist/package.json
 
 yarn tsc-multi
 
-(cd dist && node -e 'const sdk = require("@orca-ae/orca-sdk"); require("node:assert/strict").equal(sdk.VERSION, require("./package.json").version)')
-(cd dist && node -e 'import("@orca-ae/orca-sdk").then(sdk => require("node:assert/strict").equal(sdk.VERSION, require("./package.json").version))')
+(cd dist && node -e 'const sdk = require("@runorca/orca-sdk"); require("node:assert/strict").equal(sdk.VERSION, require("./package.json").version)')
+(cd dist && node -e 'import("@runorca/orca-sdk").then(sdk => require("node:assert/strict").equal(sdk.VERSION, require("./package.json").version))')
