@@ -14,7 +14,7 @@ import {
   getTestPrefix,
   cleanupCreatedVaults,
 } from './setup';
-import type { Orca, Vault } from '@orca-ae/orca-sdk';
+import type { Orca, Vault } from '@runorca/orca-sdk';
 
 describeIfCredentials('Vaults (integration)', () => {
   let client: Orca;

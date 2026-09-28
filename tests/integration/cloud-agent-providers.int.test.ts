@@ -9,7 +9,7 @@
  */
 
 import { describeIfCredentials, getTestClient, supportsExtension } from './setup';
-import type { AgentProvider, Orca } from '@orca-ae/orca-sdk';
+import type { AgentProvider, Orca } from '@runorca/orca-sdk';
 
 describeIfCredentials('Cloud agent providers (integration)', () => {
   let client: Orca;

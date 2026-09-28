@@ -1,7 +1,7 @@
 // Copyright The Orca Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import Orca, { VERSION } from '@orca-ae/orca-sdk';
+import Orca, { VERSION } from '@runorca/orca-sdk';
 import { version } from '../package.json';
 import { SDK_VERSION } from '../src/internal/constants';
 

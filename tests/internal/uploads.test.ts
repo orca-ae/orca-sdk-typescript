@@ -10,7 +10,7 @@ import {
   multipartFormRequestOptionsPreservingFilePaths,
   createForm,
   addFormValue,
-} from '@orca-ae/orca-sdk/internal/uploads';
+} from '@runorca/orca-sdk/internal/uploads';
 
 // A minimal fetch function that the supportsFormData check will accept.
 // It returns a real Response so the FormData-support detection can work.

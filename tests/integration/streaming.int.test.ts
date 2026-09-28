@@ -16,7 +16,7 @@ import {
   cleanupCreatedAgents,
   cleanupCreatedEnvironments,
 } from './setup';
-import type { Agent, Environment, Orca, Session } from '@orca-ae/orca-sdk';
+import type { Agent, Environment, Orca, Session } from '@runorca/orca-sdk';
 
 describeIfCredentials('Streaming (integration)', () => {
   let client: Orca;

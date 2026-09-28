@@ -13,7 +13,7 @@
  *   ORCA_BASE_URL — Base URL, e.g. https://api.orca.example
  */
 
-import Orca, { OrcaError } from '@orca-ae/orca-sdk';
+import Orca, { OrcaError } from '@runorca/orca-sdk';
 
 async function main(): Promise<void> {
   const orca = new Orca({

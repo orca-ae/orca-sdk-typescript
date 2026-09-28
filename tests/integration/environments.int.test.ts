@@ -14,7 +14,7 @@ import {
   getTestPrefix,
   cleanupCreatedEnvironments,
 } from './setup';
-import type { Environment, Orca } from '@orca-ae/orca-sdk';
+import type { Environment, Orca } from '@runorca/orca-sdk';
 
 describeIfCredentials('Environments (integration)', () => {
   let client: Orca;

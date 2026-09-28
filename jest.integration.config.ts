@@ -12,8 +12,8 @@ const config: Config = {
   testPathIgnorePatterns: [],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleNameMapper: {
-    '^@orca-ae/orca-sdk$': '<rootDir>/src/index.ts',
-    '^@orca-ae/orca-sdk/(.*)$': '<rootDir>/src/$1',
+    '^@runorca/orca-sdk$': '<rootDir>/src/index.ts',
+    '^@runorca/orca-sdk/(.*)$': '<rootDir>/src/$1',
   },
   setupFiles: ['<rootDir>/tests/setup.ts'],
   clearMocks: true,

@@ -1,7 +1,7 @@
 // Copyright The Orca Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { path } from '@orca-ae/orca-sdk/internal/utils/path';
+import { path } from '@runorca/orca-sdk/internal/utils/path';
 
 describe('path template tag', () => {
   it('encodes a simple substitution', () => {

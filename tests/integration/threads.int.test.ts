@@ -19,8 +19,8 @@ import {
   cleanupCreatedAgents,
   cleanupCreatedEnvironments,
 } from './setup';
-import { APIError } from '@orca-ae/orca-sdk';
-import type { Agent, Environment, Orca, Session, SessionThread } from '@orca-ae/orca-sdk';
+import { APIError } from '@runorca/orca-sdk';
+import type { Agent, Environment, Orca, Session, SessionThread } from '@runorca/orca-sdk';
 
 /**
  * Returns true if the error indicates the server has not yet implemented

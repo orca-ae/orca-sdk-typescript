@@ -5,7 +5,7 @@
  * Integration tests — core Triggers (`orca.triggers`).
  */
 
-import type { Orca, Trigger } from '@orca-ae/orca-sdk';
+import type { Orca, Trigger } from '@runorca/orca-sdk';
 import { describeIfCredentials, getTestClient } from './setup';
 
 describeIfCredentials('Triggers (integration)', () => {

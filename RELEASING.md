@@ -1,8 +1,8 @@
 # Releasing
 
 Releases use [Release Please](https://github.com/googleapis/release-please) in
-`.github/workflows/release.yml`. The public package is `@orca-ae/orca-sdk` on
-[npmjs.org](https://www.npmjs.com/package/@orca-ae/orca-sdk). A human merges the release PR;
+`.github/workflows/release.yml`. The public package is `@runorca/orca-sdk` on
+[npmjs.org](https://www.npmjs.com/package/@runorca/orca-sdk). A human merges the release PR;
 GitHub Actions then builds and publishes the exact release tag.
 
 ## Release loop
@@ -34,8 +34,13 @@ Do not hand-edit either version. Both CommonJS and ESM exports and request heade
 The manifest starts at `0.0.0`, Release Please's sentinel for no previous release.
 `initial-version: 0.2.2` selects the first release without pretending an earlier tag exists.
 After that, Release Please updates the manifest and computes versions from new commits;
-`initial-version` does not pin subsequent releases. Confirm `0.2.2` is unused on npmjs.org before
-merging the first release PR. Existing GitHub Packages versions do not reserve npmjs.org versions.
+`initial-version` does not pin subsequent releases. Confirm the proposed package version is unused
+on npmjs.org before merging each release PR. Existing GitHub Packages versions do not reserve
+npmjs.org versions.
+
+The existing `v0.2.2` tag targets the old npm scope. Do not retry that tag or move it to apply the
+scope correction. Merge the correction and use the next release tag containing
+`package.json` name `@runorca/orca-sdk` (for example `v0.2.3` for a patch-only release).
 
 ## One-time maintainer setup
 
@@ -60,9 +65,11 @@ that App. Publishing still repeats validation independently.
 
 ### npmjs.org
 
-1. Ensure your npm account owns or has publishing access to the **`@orca-ae`** scope and
-   **`@orca-ae/orca-sdk`** package. GitHub organization membership does not grant npm scope rights.
-2. In the package's npm settings, add a GitHub Actions Trusted Publisher:
+1. Ensure your npm account owns or has publishing access to the **`@runorca`** scope and
+   **`@runorca/orca-sdk`** package. GitHub organization membership does not grant npm scope rights.
+2. In the `@runorca/orca-sdk` package's npm settings, add a GitHub Actions Trusted Publisher.
+   The publisher identifies the **GitHub** repository owner, which remains `orca-ae`, not the npm
+   organization `runorca`:
 
    | Field | Value |
    | --- | --- |
@@ -81,7 +88,8 @@ Do not publish a placeholder or unrelated package just to reserve the name:
 
 ```sh
 git fetch origin --tags
-git checkout --detach v0.2.2
+git checkout --detach v0.2.3 # Replace with the reviewed release tag containing the scope correction.
+node -e 'require("node:assert/strict").equal(require("./package.json").name, "@runorca/orca-sdk")'
 corepack enable
 yarn install --frozen-lockfile
 yarn lint && yarn test && yarn build
@@ -99,10 +107,10 @@ configured merely because the workflow files exist. See [npm's Trusted Publishin
 GitHub Release creation and npm publication are separate operations. A GitHub Release can exist
 while npm publication is still awaiting approval or has failed. Fix permissions, configuration or
 registry availability, then select **Actions → Release → Run workflow**, use branch **main**, and
-set `release_tag` to the existing stable tag, for example `v0.2.2`. Or:
+set `release_tag` to the existing corrected stable tag, for example `v0.2.3`. Or:
 
 ```sh
-gh workflow run release.yml --ref main -f release_tag=v0.2.2
+gh workflow run release.yml --ref main -f release_tag=v0.2.3
 ```
 
 A nonempty `release_tag` bypasses Release Please, not the publishing checks. Recovery requires an
@@ -123,11 +131,11 @@ separate tag-triggered job.
 ## Installing the package
 
 ```sh
-npm install @orca-ae/orca-sdk
+npm install @runorca/orca-sdk
 # or
-yarn add @orca-ae/orca-sdk
+yarn add @runorca/orca-sdk
 ```
 
-No token or special registry configuration is needed. Remove any old project/user `.npmrc`
-`@orca-ae:registry=https://npm.pkg.github.com/` override (or change it to
-`https://registry.npmjs.org/`), and refresh affected lockfile resolutions.
+No token or special registry configuration is needed. Replace old `@orca-ae/orca-sdk` dependencies
+and imports with `@runorca/orca-sdk`, and refresh affected lockfile resolutions. If a project/user
+`.npmrc` overrides `@runorca:registry`, remove it or change it to `https://registry.npmjs.org/`.

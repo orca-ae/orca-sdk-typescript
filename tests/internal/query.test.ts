@@ -1,7 +1,7 @@
 // Copyright The Orca Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { stringifyQuery } from '@orca-ae/orca-sdk/internal/utils/query';
+import { stringifyQuery } from '@runorca/orca-sdk/internal/utils/query';
 
 describe('stringifyQuery', () => {
   it('returns an empty string for undefined input', () => {

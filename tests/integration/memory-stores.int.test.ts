@@ -10,8 +10,8 @@
  */
 
 import { describeIfCredentials, getTestClient, getTestPrefix } from './setup';
-import { APIError } from '@orca-ae/orca-sdk';
-import type { MemoryStore, Orca } from '@orca-ae/orca-sdk';
+import { APIError } from '@runorca/orca-sdk';
+import type { MemoryStore, Orca } from '@runorca/orca-sdk';
 
 function isNotImplemented(err: unknown): boolean {
   return err instanceof APIError && (err.status === 404 || err.status === 501);

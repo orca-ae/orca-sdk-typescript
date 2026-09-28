@@ -69,6 +69,8 @@ it('builds both module formats with the package release version and matching Use
       },
     ]);
     const distPackage = JSON.parse(fs.readFileSync(path.join(root, 'dist/package.json'), 'utf8'));
+    expect(distPackage.name).toBe('@runorca/orca-sdk');
+    expect(distPackage.repository.url).toBe('https://github.com/orca-ae/orca-sdk-typescript.git');
     expect(distPackage.version).toBe(releaseVersion);
     expect(distPackage.publishConfig).toEqual({ registry: 'https://registry.npmjs.org/', access: 'public' });
     expect(distPackage.scripts.prepublishOnly).toBeUndefined();
@@ -83,6 +85,7 @@ it('builds both module formats with the package release version and matching Use
         }),
       )[0];
     const packed = pack();
+    expect(packed.name).toBe('@runorca/orca-sdk');
     expect(packed.integrity).toBe(pack().integrity);
     expect(packed.files.map((file: { path: string }) => file.path)).toEqual(
       expect.arrayContaining([

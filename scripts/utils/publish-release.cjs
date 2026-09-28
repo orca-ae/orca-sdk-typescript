@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const REGISTRY = 'https://registry.npmjs.org/';
-const PACKAGE = '@orca-ae/orca-sdk';
+const PACKAGE = '@runorca/orca-sdk';
 const REPOSITORY = 'https://github.com/orca-ae/orca-sdk-typescript.git';
 const STABLE_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 
@@ -38,7 +38,7 @@ async function publishRelease({
       metadata.repository?.url !== REPOSITORY ||
       metadata.publishConfig?.registry !== REGISTRY ||
       metadata.publishConfig?.access !== 'public' ||
-      metadata.publishConfig?.['@orca-ae:registry'] !== undefined
+      Object.keys(metadata.publishConfig).some((key) => key.endsWith(':registry'))
     ) {
       throw new Error('Unsafe package metadata: expected public npmjs.org package and canonical repository');
     }
