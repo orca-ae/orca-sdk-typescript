@@ -80,6 +80,13 @@ This is the release that makes the SDK work against a self-hosted engine deploym
 - Core deletes for environments, memory stores, memories, session resources, skills and versions, vaults, and credentials return typed tombstones. Archive methods for agents, sessions, environments, memory stores, vaults, and credentials return the updated entity.
 - The package ships the verbatim Apache License 2.0 text and a NOTICE file that credits the third-party code the HTTP client runtime is adapted from.
 
+## [0.2.3](https://github.com/orca-ae/orca-sdk-typescript/compare/v0.2.2...v0.2.3) (2026-09-28)
+
+
+### Bug Fixes
+
+* publish SDK under the runorca npm scope ([#3](https://github.com/orca-ae/orca-sdk-typescript/issues/3)) ([0a3eae0](https://github.com/orca-ae/orca-sdk-typescript/commit/0a3eae0ba73fb1419a983809cd638accaeb12535))
+
 ## 0.2.2 (2026-09-28)
 
 

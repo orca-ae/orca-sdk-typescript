@@ -1,6 +1,6 @@
 {
   "name": "@runorca/orca-sdk",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "TypeScript SDK for the Orca Agent Engine API",
   "author": "The Orca Authors",
   "types": "dist/index.d.ts",
