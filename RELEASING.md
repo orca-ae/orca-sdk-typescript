@@ -1,91 +1,126 @@
 # Releasing
 
-The SDK is published to GitHub Packages at [`@orca-ae/orca-sdk`](https://github.com/orca-ae/orca-sdk-typescript/packages). Releases are driven by two workflows in `.github/workflows/`:
+Releases use [Release Please](https://github.com/googleapis/release-please) in
+`.github/workflows/release.yml`. The public package is `@orca-ae/orca-sdk` on
+[npmjs.org](https://www.npmjs.com/package/@orca-ae/orca-sdk). A human merges the release PR;
+GitHub Actions then builds and publishes the exact release tag.
 
-- **`release-rc.yml`** — release current `main` as a new release candidate.
-- **`promote.yml`** — promote the latest RC to a stable release and bump `main` to the next version.
+## Release loop
 
-The source-of-truth version lives in the top-level `VERSION` file.
+1. Squash-merge work into `main` using Conventional Commit PR titles. `fix:` bumps patch, `feat:`
+   bumps minor, and breaking changes bump minor while the SDK is pre-1.0. Commits containing only
+   documentation, tests or chores do not normally create a release.
+2. The push to `main` runs Release Please, which creates or updates `release: <version>`. It updates
+   `package.json`, `CHANGELOG.md`, `.release-please-manifest.json`, and `src/version.ts`.
+3. Review the release PR, validate its exact commit, and merge it. The next run creates `vX.Y.Z`
+   and the GitHub Release.
+4. In the same workflow, the publish job checks out that tag, verifies it belongs to `main`, runs
+   `yarn lint`, `yarn test`, and `yarn build`, and checks that generated version files are unchanged.
+   It packs `dist/` and publishes the checked tarball publicly to npmjs.org with provenance and the
+   `latest` dist-tag, using npm Trusted Publishing (OIDC).
 
-`VERSION` tracks the planned stable release. The effective package version comes from
-`package.json`, which may include an RC suffix during release builds. `yarn lint`, `yarn test`,
-and `yarn build` regenerate `src/version.ts` from that value so SDK exports and User-Agent headers
-match the package being built. Do not edit `src/version.ts` by hand. The build also checks both
-CommonJS and ESM version exports against `dist/package.json`.
+This is not a release on every feature merge. Merging the release PR is the approval to release.
+The former scheduled RC and manual promotion workflows are removed; there is no automatic RC
+cycle, tag deletion, or post-publication version-bump commit.
 
-## Versioning model
+## Version source of truth
 
-`VERSION` on `main` is **always stable semver** (e.g. `0.2.1`) — it represents the next planned stable release. Release candidates are derived at release time: the `release-rc` workflow appends `-rcN` (where `N` is the next available RC number for that base) and tags the resulting version as `vX.Y.Z-rcN`. When the RC is ready to ship, `promote` publishes the stable `vX.Y.Z`, deletes the `-rc*` tags for that base, and bumps `VERSION` on `main` to the next planned stable.
+`package.json` owns the package version; the old, redundant `VERSION` file is removed.
+`src/version.ts` is generated from it by `scripts/utils/sync-version.cjs`, and carries a
+`x-release-please-version` annotation so the release PR commits the matching SDK version too.
+Do not hand-edit either version. Both CommonJS and ESM exports and request headers must agree with
+`dist/package.json`. The publish script additionally checks the release tag and manifest.
 
-A git tag `v{version}` is pushed for every RC and stable release. The publish step builds from that exact tag.
+The manifest starts at `0.0.0`, Release Please's sentinel for no previous release.
+`initial-version: 0.2.2` selects the first release without pretending an earlier tag exists.
+After that, Release Please updates the manifest and computes versions from new commits;
+`initial-version` does not pin subsequent releases. Confirm `0.2.2` is unused on npmjs.org before
+merging the first release PR. Existing GitHub Packages versions do not reserve npmjs.org versions.
 
-## Typical flow
+## One-time maintainer setup
 
-1. **Cut an RC.** The `release-rc` workflow fires automatically every Monday at 00:00 UTC, or you can trigger it manually. It reads `VERSION` from `main`, finds the next RC number from existing tags, and publishes `vX.Y.Z-rcN`. **`main` is not modified.**
-2. **Promote when ready.** Once the RC is validated downstream, go to **Actions → Promote → Run workflow** and choose a `bump_type` (`patch` / `minor` / `major`, default `patch`). The workflow publishes the stable `vX.Y.Z`, deletes all `vX.Y.Z-rc*` tags, and pushes a single `Bump version to <next>` commit to `main`.
-3. **Repeat.** The next Monday (or next manual `release-rc` dispatch) starts producing RCs against the newly bumped base.
+### GitHub
 
-## Release RC workflow (`release-rc.yml`)
+- Allow GitHub Actions to create pull requests in repository settings and organization policy.
+  Release Please uses `GITHUB_TOKEN` with `contents: write` and `pull-requests: write`; no direct
+  writes to `main` or branch-protection bypass are needed. Tag rules must allow creation of release
+  tags by the workflow. Protect existing release tags from modification or deletion.
+- Create the GitHub Environment **`npm`**, preferably with required reviewers. Restrict deployment
+  branches to `main`: workflow runs originate on `main`, even though checkout builds a release tag.
+- Keep the repository public for npm provenance. The publish job uses GitHub-hosted Ubuntu runners,
+  Node.js 24 (with an npm CLI supporting Trusted Publishing, npm >=11.5.1), and `id-token: write`.
+  Neither `NPM_TOKEN` nor `packages: write` is used.
 
-**Triggers:**
+**Bot PR CI:** PRs opened or updated with `GITHUB_TOKEN` do not automatically trigger PR workflows.
+Before merging, check out the exact release PR head and run `yarn install --frozen-lockfile`,
+`yarn lint`, `yarn test`, and `yarn build`. If branch protection requires automated PR checks,
+configure Release Please to use a least-privilege GitHub App token so those checks run; do not
+remove required checks to work around the bot-token limitation. This workflow does not provision
+that App. Publishing still repeats validation independently.
 
-| When | Trigger |
-|------|---------|
-| Mondays 00:00 UTC | `schedule` cron |
-| Manual | `workflow_dispatch` (no inputs) |
+### npmjs.org
 
-**What it does:**
+1. Ensure your npm account owns or has publishing access to the **`@orca-ae`** scope and
+   **`@orca-ae/orca-sdk`** package. GitHub organization membership does not grant npm scope rights.
+2. In the package's npm settings, add a GitHub Actions Trusted Publisher:
 
-1. Checks out `main` with full tag history.
-2. Reads `VERSION`. Refuses to run if it isn't stable semver (`X.Y.Z` with no `-rc`).
-3. Scans `vX.Y.Z-rc*` tags, computes the next `-rcN`.
-4. Runs `yarn install --frozen-lockfile`, `yarn lint`, `yarn test`, `yarn build`.
-5. `npm version <rc-version> --no-git-tag-version --allow-same-version` — updates `package.json` in the checkout only.
-6. Creates and pushes tag `v<rc-version>` at `main` HEAD.
-7. Publishes `dist/` to GitHub Packages.
+   | Field | Value |
+   | --- | --- |
+   | Organization or user | `orca-ae` |
+   | Repository | `orca-sdk-typescript` |
+   | Workflow filename | `release.yml` (not a path) |
+   | Environment name | `npm` |
+   | Allowed actions | Enable direct `npm publish`, not only staged publishing |
 
-**`main` is never modified.** The workflow only writes a git tag.
+3. After a successful OIDC publication, restrict traditional publishing tokens in the npm package
+   settings. Do not store a long-lived npm token in GitHub Actions.
 
-## Promote workflow (`promote.yml`)
+If npm requires the package to exist before Trusted Publisher settings are available, a maintainer
+performs the first publication from the reviewed release tag using interactive npm authentication.
+Do not publish a placeholder or unrelated package just to reserve the name:
 
-**Triggers:** `workflow_dispatch` only.
-
-**Input:**
-
-| Input | Type | Default | Purpose |
-|-------|------|---------|---------|
-| `bump_type` | choice (`patch` / `minor` / `major`) | `patch` | How to bump `VERSION` on `main` after publishing stable |
-
-**What it does:**
-
-1. **prepare** — reads `VERSION`, finds the latest `vX.Y.Z-rc*` tag, and refuses to proceed unless:
-   - `VERSION` is stable semver, AND
-   - At least one RC tag exists for that base, AND
-   - The latest RC tag points at `main` HEAD (no commits landed since the RC was cut), AND
-   - The stable tag `vX.Y.Z` doesn't already exist.
-2. **validate** — runs `yarn lint`, `yarn test`, `yarn build` against `main`.
-3. **promote** —
-   - Creates and pushes the stable tag `vX.Y.Z`.
-   - Builds and publishes the stable version to GitHub Packages.
-   - Deletes every `vX.Y.Z-rc*` tag (local and remote).
-   - Writes the bumped `VERSION` (e.g. `0.2.1` → `0.2.2` with `patch`), syncs `package.json`, commits `Bump version to <next>`, pushes to `main`.
-
-Publish happens **before** the bump commit. If publish fails, `main` is untouched — re-run after addressing the underlying cause.
-
-## Re-publishing
-
-GitHub Packages refuses to re-publish an existing version. To re-publish a botched RC, just trigger `release-rc` again — it produces the next `-rcN`. If a botched stable release needs replacement, bump on `main` and cut a new RC + promote cycle.
-
-## Consuming the package
-
-Consumers need a `.npmrc` that points the `@orca-ae` scope at GitHub Packages and provides a token with `read:packages`:
-
-```ini
-@orca-ae:registry=https://npm.pkg.github.com/
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```sh
+git fetch origin --tags
+git checkout --detach v0.2.2
+corepack enable
+yarn install --frozen-lockfile
+yarn lint && yarn test && yarn build
+npm login --registry=https://registry.npmjs.org/
+(cd dist && npm publish --access public --registry=https://registry.npmjs.org/)
 ```
 
-Then:
+This local bootstrap does not have GitHub Actions provenance. Configure the trusted publisher
+then retry the workflow for this tag; an identical already-published artifact is safely skipped.
+Subsequent releases use OIDC and provenance. Do not assume these account settings have been
+configured merely because the workflow files exist. See [npm's Trusted Publishing guide](https://docs.npmjs.com/trusted-publishers/).
+
+## Retrying a failed publication
+
+GitHub Release creation and npm publication are separate operations. A GitHub Release can exist
+while npm publication is still awaiting approval or has failed. Fix permissions, configuration or
+registry availability, then select **Actions → Release → Run workflow**, use branch **main**, and
+set `release_tag` to the existing stable tag, for example `v0.2.2`. Or:
+
+```sh
+gh workflow run release.yml --ref main -f release_tag=v0.2.2
+```
+
+A nonempty `release_tag` bypasses Release Please, not the publishing checks. Recovery requires an
+existing, non-draft, non-prerelease GitHub Release, a tag reachable from `main`, matching versions,
+and passing validation. It builds the tag, never the current `main` contents. Leaving the input
+empty runs Release Please normally. Both paths use the same concurrency group.
+
+- Already published with identical tarball integrity: skip without changing any dist-tags.
+- Existing version with different integrity: stop; publish a corrected **new version**, not an overwrite.
+- Registry 401/403/429/5xx or network errors: fail closed, not treated as a missing version.
+- Retrying an older missing version when `latest` is newer: refuse to move `latest` backwards.
+
+Do not delete or move a published tag. If source or build changes are needed, merge a fix and
+release a new version instead of modifying the existing release. Tags created with `GITHUB_TOKEN`
+do not trigger another workflow, which is why publishing is part of this workflow rather than a
+separate tag-triggered job.
+
+## Installing the package
 
 ```sh
 npm install @orca-ae/orca-sdk
@@ -93,26 +128,6 @@ npm install @orca-ae/orca-sdk
 yarn add @orca-ae/orca-sdk
 ```
 
-## Required secrets / settings
-
-Both workflows use the default `secrets.GITHUB_TOKEN`. No additional secrets are required as long as:
-
-- The token can push tags (`release-rc`) and push to `main` (`promote`) — i.e. branch protection allows the workflow to push, or `main` is excluded from required-PR rules for these workflows.
-- The token has `packages: write` for the repo's GitHub Packages namespace.
-
-If `main` is fully protected, swap `secrets.GITHUB_TOKEN` in `promote.yml`'s checkout step for a PAT (or GitHub App token) with bypass rights and store it as `secrets.RELEASE_BOT_TOKEN`.
-
-## Operational guidance
-
-- **Don't trigger `release-rc` and `promote` simultaneously.** Each has its own concurrency group, but they touch overlapping state (the same set of RC tags). Wait for one to finish before starting the other.
-- **Hotfix on top of an RC?** Land the fix on `main`, then run `release-rc` to cut a new `-rcN`. Don't promote until the latest RC tag points at the commit you actually want to ship.
-- **Manual local publish.** The `prepublishOnly` script in `package.json` blocks `npm publish` from the repo root. To publish by hand:
-
-  ```sh
-  yarn install --frozen-lockfile
-  yarn build
-  cd dist
-  npm publish
-  ```
-
-  You'll need a token in your `.npmrc` with `write:packages` for `@orca-ae`.
+No token or special registry configuration is needed. Remove any old project/user `.npmrc`
+`@orca-ae:registry=https://npm.pkg.github.com/` override (or change it to
+`https://registry.npmjs.org/`), and refresh affected lockfile resolutions.

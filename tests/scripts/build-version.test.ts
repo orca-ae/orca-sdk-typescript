@@ -13,13 +13,22 @@ it('builds both module formats with the package release version and matching Use
   const releaseVersion = '9.8.7-rc.1';
 
   try {
-    for (const name of ['src', 'scripts', 'tsconfig.json', 'tsconfig.build.json', 'tsc-multi.json']) {
+    for (const name of [
+      'src',
+      'scripts',
+      'tsconfig.json',
+      'tsconfig.build.json',
+      'tsc-multi.json',
+      'README.md',
+      'LICENSE',
+      'NOTICE',
+    ]) {
       fs.cpSync(path.join(ROOT, name), path.join(root, name), { recursive: true });
     }
     fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(root, 'node_modules'), 'junction');
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ ...pkg, version: releaseVersion }));
-    // VERSION stays at the planned stable release while package.json carries the RC being built.
+    // A legacy VERSION file must not override package.json, including prerelease builds.
     fs.writeFileSync(path.join(root, 'VERSION'), '9.8.7\n');
 
     execFileSync('bash', ['scripts/build'], { cwd: root, encoding: 'utf8', timeout: 60_000 });
@@ -59,9 +68,38 @@ it('builds both module formats with the package release version and matching Use
         clientHeader: `orca-sdk-ts/${releaseVersion}`,
       },
     ]);
-    expect(JSON.parse(fs.readFileSync(path.join(root, 'dist/package.json'), 'utf8')).version).toBe(
-      releaseVersion,
+    const distPackage = JSON.parse(fs.readFileSync(path.join(root, 'dist/package.json'), 'utf8'));
+    expect(distPackage.version).toBe(releaseVersion);
+    expect(distPackage.publishConfig).toEqual({ registry: 'https://registry.npmjs.org/', access: 'public' });
+    expect(distPackage.scripts.prepublishOnly).toBeUndefined();
+    expect(distPackage.devDependencies).toBeUndefined();
+    expect(distPackage.main).toBe('./index.js');
+    expect(distPackage.exports['.']).toEqual({ import: './index.mjs', require: './index.js' });
+    const pack = () =>
+      JSON.parse(
+        execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+          cwd: path.join(root, 'dist'),
+          encoding: 'utf8',
+        }),
+      )[0];
+    const packed = pack();
+    expect(packed.integrity).toBe(pack().integrity);
+    expect(packed.files.map((file: { path: string }) => file.path)).toEqual(
+      expect.arrayContaining([
+        'index.js',
+        'index.mjs',
+        'index.d.ts',
+        'package.json',
+        'README.md',
+        'LICENSE',
+        'NOTICE',
+      ]),
     );
+    expect(
+      packed.files.some((file: { path: string }) =>
+        /(^|\/)(node_modules|tests|\.git|\.env)(\/|$)/.test(file.path),
+      ),
+    ).toBe(false);
     expect(fs.readFileSync(path.join(root, 'dist/version.d.ts'), 'utf8')).toContain(releaseVersion);
     expect(fs.readFileSync(path.join(root, 'dist/src/version.ts'), 'utf8')).toContain(releaseVersion);
   } finally {

@@ -73,7 +73,7 @@ pull requests.
 
 ## CI configuration
 
-Workflows that talk to something outside this repository read what they need from secrets, which
+Test workflows that talk to something outside this repository read what they need from secrets, which
 GitHub masks in the public run logs. That covers endpoints and audiences as well as credentials.
 Uploaded artifacts are not masked, so these workflows upload none.
 
@@ -87,9 +87,15 @@ in seconds, which is the tell.
 | `claude.yml`, `claude-code-review.yml` | `CLAUDE_CODE_OAUTH_TOKEN` | job fails — no gate |
 | `e2e-managed-agents.yml` | an organization token that can read the engine source | job skips |
 | `integration.yml` | `ORCA_TEST_API_KEY` and `ORCA_TEST_BASE_URL` | job skips; only one fails |
+| `release.yml` | Actions PR creation permission; npm Trusted Publisher and GitHub environment `npm` | release preparation or publication fails |
 
 Maintainers set repository secrets under **Settings → Secrets and variables → Actions**. The
 end-to-end and integration jobs never run on pull requests from forks, which get no secrets.
+
+Releases use Release Please and npm OIDC rather than a stored npm token. Maintainers must complete
+the setup in [RELEASING.md](RELEASING.md) before merging the first release PR. Release Please PRs
+created with `GITHUB_TOKEN` do not automatically trigger PR CI; validate the exact release PR commit
+before merging (see the release guide).
 
 ## Code style
 
@@ -129,6 +135,10 @@ Start the subject with a [Conventional Commits](https://www.conventionalcommits.
 `feat:`, `fix:`, `docs:`, `test:`, `ci:` or `chore:`, followed by a short summary in the imperative
 mood. Then explain why the change is needed, if that isn't obvious. Pull requests are squash-merged,
 so the pull request title becomes the commit subject on `main`: give it the same form.
+
+Release Please uses these commits to maintain a release PR and changelog. `fix:` increments the
+patch version and `feat:` the minor; before 1.0, breaking changes also increment the minor. Merging
+the release PR publishes to npmjs.org; merging an ordinary feature PR does not publish immediately.
 
 ### Say when AI helped
 

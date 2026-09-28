@@ -9,22 +9,18 @@ For a command-line client, see the `ork` CLI (`brew install orca-ae/tap/ork`).
 
 ## Installation
 
-The package is published to GitHub Packages. Add an `.npmrc` to your project (or `~/.npmrc`) so the `@orca-ae` scope resolves to GitHub Packages and can authenticate:
-
-```ini
-@orca-ae:registry=https://npm.pkg.github.com/
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
-`GITHUB_TOKEN` must be a Personal Access Token (classic) with at least the `read:packages` scope.
-
-Then install:
+Install the public package from [npmjs.org](https://www.npmjs.com/package/@orca-ae/orca-sdk).
+No GitHub token or custom `.npmrc` is needed:
 
 ```sh
 yarn add @orca-ae/orca-sdk
 # or
 npm install @orca-ae/orca-sdk
 ```
+
+If you previously configured `@orca-ae:registry=https://npm.pkg.github.com/` in a project or user
+`.npmrc`, remove that override (or change it to `https://registry.npmjs.org/`). Existing lockfiles
+may also need refreshing to stop resolving this package through GitHub Packages.
 
 Requires Node.js >= 20.
 

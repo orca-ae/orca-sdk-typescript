@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Releases now use Release Please: conventional commits update a release PR, and merging it builds and publishes the tagged SDK publicly to npmjs.org using Trusted Publishing. The scheduled RC and manual promotion workflows are replaced by a single release workflow with explicit publication retries. `package.json` is the version source of truth; the redundant `VERSION` file is removed.
+
 ### Fixed
 
 - The exported SDK version and User-Agent now match `package.json`, including release-candidate versions. Lint, test, and build synchronize the version automatically, and the build verifies both CommonJS and ESM exports against the package version.

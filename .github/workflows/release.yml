@@ -1,0 +1,104 @@
+# Copyright The Orca Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Retry npm publication of an existing stable GitHub Release (vX.Y.Z); leave empty to run Release Please'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Prepare release
+    if: github.repository == 'orca-ae/orca-sdk-typescript' && github.ref == 'refs/heads/main' && !inputs.release_tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  resolve:
+    name: Validate release selection
+    needs: release-please
+    if: >-
+      always() && !failure() && !cancelled() &&
+      github.repository == 'orca-ae/orca-sdk-typescript' && github.ref == 'refs/heads/main' &&
+      (inputs.release_tag != '' || needs.release-please.outputs.release_created == 'true')
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.select.outputs.tag }}
+    steps:
+      - name: Require an existing stable GitHub Release
+        id: select
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag || needs.release-please.outputs.tag_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo '::error::Expected a stable release tag vX.Y.Z'
+            exit 1
+          fi
+          gh release view "$RELEASE_TAG" --json tagName,isDraft,isPrerelease > release.json
+          jq -e --arg tag "$RELEASE_TAG" \
+            '.tagName == $tag and .isDraft == false and .isPrerelease == false' release.json
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish to npmjs.org
+    needs: resolve
+    # The normal path and explicit retries share validation, permissions and serialization.
+    if: always() && needs.resolve.result == 'success' && !cancelled()
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the release commit to belong to main
+        run: git merge-base --is-ancestor HEAD origin/main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org/'
+      - run: corepack enable
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      - run: yarn test
+      - run: yarn build
+      - name: Require generated version to be committed
+        run: git diff --exit-code -- package.json src/version.ts .release-please-manifest.json
+      # GITHUB_TOKEN-created tags do not trigger another workflow; publish in this run.
+      # npm exchanges the job's OIDC token with its configured trusted publisher.
+      - name: Publish the exact release artifact (or verify an identical prior publication)
+        run: node scripts/utils/publish-release.cjs

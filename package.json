@@ -20,7 +20,8 @@
   ],
   "private": false,
   "publishConfig": {
-    "@orca-ae:registry": "https://npm.pkg.github.com/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "scripts": {
     "build": "./scripts/build",
