@@ -11,6 +11,14 @@ export type {
   GuardrailListParams,
   GuardrailPhase,
   GuardrailRule,
+  GuardrailMode,
+  GuardrailDogwoodRule,
+  GuardrailUnknownRule,
+  GuardrailResponseRule,
+  GuardrailEffectiveParams,
+  EffectiveGuardrail,
+  EffectiveGuardrailBundle,
+  GuardrailDogwoodSchema,
   GuardrailScope,
   GuardrailStateScope,
   GuardrailType,
@@ -19,3 +27,5 @@ export type {
   GuardrailVerdict,
 } from './guardrails';
 export { POLICY_EXTENSION_GROUP } from '../../internal/constants';
+
+export { isGuardrailBuiltinRule, isGuardrailExpressionRule, isGuardrailDogwoodRule } from './guardrails';

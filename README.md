@@ -210,6 +210,29 @@ if (groups.some((g) => g.name === 'cloud.sn.io')) {
 }
 ```
 
+## Engine policy and pricing
+
+Engine extensions include Dogwood guardrails, effective policy exchanges, pricing v2
+catalog snapshots, and runtime harness discovery. These capabilities are separate
+from the portable core and the hosted extension; see [surface status](docs/surface-status.md#engine-contract-alignment)
+for engine-only actions and the explicit operation exclusions.
+
+Use response headers when exchanging an effective policy lease:
+
+```ts
+const { data, response } = await orca.guardrails.effective(
+  { rule_kinds: 'builtin,dogwood' },
+  { headers: { 'If-None-Match': previousETag } },
+).withResponse();
+// data is the bundle on 200, or null on 304. Lease headers exist on both.
+const expiresAt = response.headers.get('Orca-Guardrail-Expires-At');
+
+// Requires pricing.runorca.ai with v2 advertised in discovery.
+const page = await orca.modelPriceRules.list({ limit: 10 });
+console.log(page.catalog_id, page.required_features);
+const next = page.hasNextPage() ? await page.getNextPage() : null;
+```
+
 ## File upload
 
 ```ts

@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Replace the extracted engine extension contract with the byte-identical full public engine artifact; portable core + overlay and hosted extension contracts are unchanged. All 114 engine operations have explicit implementation/exclusion coverage.
+- Add Dogwood rules, enforce/observe mode, warnings, workspace-window state scope, forward-compatible response rules and exported shape guards. Existing exhaustive switches must handle Dogwood and unknown response kinds; request unions remain closed.
+- Add effective policy exchanges (200 bundle / 304 null with native response headers), Dogwood schema, pricing v2 discovery and snapshot-preserving model-price-rule pagination, runtime discovery, environment key/work-stat actions, and thread interrupt. Pricing v2 requires advertised v2; expired cursors stop with 410.
+
 - Releases now use Release Please: conventional commits update a release PR, and merging it builds and publishes the tagged SDK publicly to npmjs.org using Trusted Publishing. The scheduled RC and manual promotion workflows are replaced by a single release workflow with explicit publication retries. `package.json` is the version source of truth; the redundant `VERSION` file is removed.
 
 ### Fixed

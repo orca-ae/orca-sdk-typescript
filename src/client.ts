@@ -69,6 +69,7 @@ import * as MemoryStoresAPI from './resources/memory-stores';
 import * as TriggersAPI from './resources/triggers';
 import * as GuardrailsAPI from './resources/guardrails';
 import * as ModelPricesAPI from './resources/model-prices';
+import { ModelPriceRules } from './resources/model-price-rules';
 import * as CloudAPI from './resources/cloud';
 import * as DiscoveryAPI from './resources/discovery';
 import { makeSessionHandle, type SessionHandle } from './lib/session';
@@ -640,7 +641,15 @@ export class BaseOrca {
       response.ok ? 'succeeded' : 'failed'
     } with status ${response.status} in ${headersTime - startTime}ms`;
 
-    if (!response.ok) {
+    // Only the effective-policy exchange defines a successful, bodyless 304.
+    if (
+      !response.ok &&
+      !(
+        response.status === 304 &&
+        options.method === 'get' &&
+        options.path === '/apis/policy.runorca.ai/v1/effectiveguardrails'
+      )
+    ) {
       const shouldRetry = await this.shouldRetry(response, options);
       if (retriesRemaining && shouldRetry) {
         const retryMessage = `retrying, ${retriesRemaining} attempts remaining`;
@@ -824,7 +833,7 @@ export class BaseOrca {
    * a version warning, since that's a stronger signal of an outdated
    * deployment than an empty list is.
    */
-  async ensureExtensionAvailable(group: string, options?: RequestOptions): Promise<void> {
+  async ensureExtensionAvailable(group: string, options?: RequestOptions, version?: string): Promise<void> {
     const deploymentURL = options?.defaultBaseURL ?? this.baseURL;
     let groups = this.extensionGroups.get(deploymentURL);
     if (!groups) {
@@ -850,12 +859,12 @@ export class BaseOrca {
       this.extensionGroups.set(deploymentURL, groups);
     }
 
-    if (!groups.has(group)) {
+    if (!groups.has(group) || (version !== undefined && !groups.has(group + '/' + version))) {
       throw new Errors.ExtensionNotAvailableError(
         group,
         `This deployment does not advertise the "${group}" extension group (GET /apis ` +
           `groups: [${[...groups].join(', ')}]). This request requires a deployment that ` +
-          'serves the extension group.',
+          'serves the extension group.' + (version ? ' Required version: ' + version + '.' : ''),
       );
     }
   }
@@ -885,7 +894,9 @@ export class BaseOrca {
       }
       throw err;
     }
-    return new Set(groupList.groups.map((g) => g.name));
+    return new Set(
+      groupList.groups.flatMap((g) => [g.name, ...g.versions.map((v) => g.name + '/' + v.version)]),
+    );
   }
 
   // Static re-exports, so error classes and `Stream` are reachable from the client class (`Orca.APIError`).
@@ -957,6 +968,9 @@ export class Orca extends BaseOrca {
 
   /** Pricing extension — inspect effective model prices used for cost accounting. */
   modelPrices: ModelPricesAPI.ModelPrices = new ModelPricesAPI.ModelPrices(this);
+
+  /** Engine pricing v2 catalog snapshots. */
+  modelPriceRules: ModelPriceRules = new ModelPriceRules(this);
 
   /**
    * Hosted extensions — providers, functions, connections, packages, catalogs,

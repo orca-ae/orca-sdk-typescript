@@ -90,7 +90,7 @@ export class PageCursor<T> implements AsyncIterable<T> {
       query,
     };
     return this.client.requestAPIList<T, PageCursor<T>>(
-      PageCursor as new (
+      this.constructor as new (
         client: PageClient,
         response: PageCursorResponse<T>,
         options: FinalRequestOptions,

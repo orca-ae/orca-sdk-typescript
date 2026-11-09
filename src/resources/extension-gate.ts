@@ -9,6 +9,7 @@ export function extensionGate(
   client: Orca,
   group: string,
   options?: RequestOptions,
+  version?: string,
 ): Promise<RequestOptions> {
-  return client.ensureExtensionAvailable(group, options).then(() => options ?? {});
+  return client.ensureExtensionAvailable(group, options, version).then(() => options ?? {});
 }

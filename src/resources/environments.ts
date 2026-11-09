@@ -134,6 +134,33 @@ export interface EnvironmentListParams extends PageCursorParams {
 
 export class Environments extends APIResource {
   /**
+   * Rotate the engine environment's worker key. Store the returned secret securely.
+   * @example
+   * const key = await orca.environments.rotateKey('env_id');
+   */
+  rotateKey(envId: string, options?: RequestOptions): APIPromise<EnvironmentRotatedKey> {
+    return this._client.post(path`/v1/environments/${envId}/rotate-key`, { body: {}, ...options });
+  }
+
+  /**
+   * Revoke the engine environment's current worker key.
+   * @example
+   * await orca.environments.revokeKey('env_id');
+   */
+  revokeKey(envId: string, options?: RequestOptions): APIPromise<Environment> {
+    return this._client.post(path`/v1/environments/${envId}/revoke-key`, { body: {}, ...options });
+  }
+
+  /**
+   * Retrieve engine work-queue statistics.
+   * @example
+   * const stats = await orca.environments.workStats('env_id');
+   */
+  workStats(envId: string, options?: RequestOptions): APIPromise<EnvironmentWorkStats> {
+    return this._client.get(path`/v1/environments/${envId}/work_stats`, options);
+  }
+
+  /**
    * Create a new environment in the registry.
    *
    * @example
@@ -220,4 +247,15 @@ export class Environments extends APIResource {
       ...options,
     });
   }
+}
+
+export interface EnvironmentRotatedKey {
+  env_key: string;
+  env_key_expires_at: string;
+}
+
+export interface EnvironmentWorkStats {
+  depth: number;
+  in_flight: number;
+  worker_connected: boolean;
 }
