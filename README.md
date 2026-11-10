@@ -201,6 +201,8 @@ try {
 const providers = await orca.cloud.agents.providers.list();
 ```
 
+Discovery gating caches successful snapshots per effective deployment URL. Advertised groups and versions stay cached regardless of age. If a requested group or version is missing, the SDK refreshes once the last successful fetch is at least 15 seconds old; fresh misses make no extra discovery request. Failed refreshes surface their actual error and preserve the previous snapshot and timestamp. Concurrent probes share a request only when neither caller supplies explicit request controls, preserving authentication, timeout, and cancellation isolation. This also applies to engine extension gates.
+
 You can probe extension support directly instead of catching the error:
 
 ```ts
@@ -208,6 +210,29 @@ const { groups } = await orca.discovery.groups();
 if (groups.some((g) => g.name === 'cloud.sn.io')) {
   // safe to call orca.cloud.*
 }
+```
+
+## Engine policy and pricing
+
+Engine extensions include Dogwood guardrails, effective policy exchanges, pricing v2
+catalog snapshots, and runtime harness discovery. These capabilities are separate
+from the portable core and the hosted extension; see [surface status](docs/surface-status.md#engine-contract-alignment)
+for engine-only actions and the explicit operation exclusions.
+
+Use response headers when exchanging an effective policy lease:
+
+```ts
+const { data, response } = await orca.guardrails.effective(
+  { rule_kinds: 'builtin,dogwood' },
+  { headers: { 'If-None-Match': previousETag } },
+).withResponse();
+// data is the bundle on 200, or null on 304. Lease headers exist on both.
+const expiresAt = response.headers.get('Orca-Guardrail-Expires-At');
+
+// Requires pricing.runorca.ai with v2 advertised in discovery.
+const page = await orca.modelPriceRules.list({ limit: 10 });
+console.log(page.catalog_id, page.required_features);
+const next = page.hasNextPage() ? await page.getNextPage() : null;
 ```
 
 ## File upload
@@ -277,6 +302,7 @@ Available error subclasses:
 ## Retries and timeouts
 
 The client automatically retries transient failures (network errors, 408, 409, 429, 5xx) with exponential backoff and jitter.
+Environment key rotation and thread interrupt default to zero retries, overriding client-wide settings. A late rotation attempt can invalidate a returned key; an interrupt can append a terminal event before returning 502, so retrying can duplicate the event. Only an explicit per-call numeric `maxRetries` opts these actions into retries; `undefined` keeps zero.
 
 ```ts
 const orca = new Orca({

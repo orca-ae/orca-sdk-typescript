@@ -55,6 +55,21 @@ export interface ThreadListParams extends PageCursorParams {
 // ---- Resource class --------------------------------------------------------
 
 export class Threads extends APIResource {
+  /**
+   * Interrupt one engine session thread.
+   * Retries default to zero: a 502 can follow a successful terminal-event append.
+   * Explicit per-call maxRetries overrides this action default.
+   * @example
+   * await orca.sessions.threads.interrupt('session_id', 'thread_id');
+   */
+  interrupt(sessionId: string, threadId: string, options?: RequestOptions): APIPromise<SessionThread> {
+    return this._client.post(path`/v1/sessions/${sessionId}/threads/${threadId}/interrupt`, {
+      body: {},
+      ...options,
+      maxRetries: options?.maxRetries ?? 0,
+    });
+  }
+
   /** Per-thread event listing and SSE streaming. */
   events: Events = new Events(this._client);
 

@@ -92,4 +92,27 @@ describeIfCredentials('Policy and pricing extensions (integration)', () => {
       expect(retrieved).toEqual(prices[0]);
     }
   });
+
+  it('discovers a pricing v2 snapshot when the deployment advertises v2', async () => {
+    const { groups } = await client.discovery.groups();
+    if (
+      !groups.some(
+        (group) =>
+          group.name === PRICING_EXTENSION_GROUP &&
+          group.versions.some((version) => version.version === 'v2'),
+      )
+    )
+      return;
+
+    const resources = await client.discovery.pricingV2GroupResources();
+    expect(resources.group_version).toBe('pricing.runorca.ai/v2');
+    const page = await client.modelPriceRules.list({ limit: 1 });
+    expect(typeof page.catalog_id).toBe('string');
+    expect(Array.isArray(page.required_features)).toBe(true);
+    if (page.hasNextPage()) {
+      const next = await page.getNextPage();
+      expect(next.catalog_id).toBe(page.catalog_id);
+      expect(next.digest).toBe(page.digest);
+    }
+  });
 });

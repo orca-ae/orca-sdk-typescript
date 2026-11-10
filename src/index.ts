@@ -301,6 +301,14 @@ export type {
   GuardrailListParams,
   GuardrailPhase,
   GuardrailRule,
+  GuardrailMode,
+  GuardrailDogwoodRule,
+  GuardrailUnknownRule,
+  GuardrailResponseRule,
+  GuardrailEffectiveParams,
+  EffectiveGuardrail,
+  EffectiveGuardrailBundle,
+  GuardrailDogwoodSchema,
   GuardrailScope,
   GuardrailStateScope,
   GuardrailType,
@@ -420,3 +428,18 @@ export type {
   SourceStatusInstance,
   SourceUpdateParams,
 } from './resources/cloud';
+
+export {
+  isGuardrailBuiltinRule,
+  isGuardrailExpressionRule,
+  isGuardrailDogwoodRule,
+} from './resources/guardrails';
+export { ModelPriceRules, ModelPriceRulePage } from './resources/model-price-rules';
+export type {
+  ModelPriceRule,
+  ModelPriceRuleCatalog,
+  ModelPriceRuleListParams,
+  ModelPriceRuleListResponse,
+} from './resources/model-price-rules';
+export type { Harness, HarnessList } from './resources/discovery';
+export type { EnvironmentRotatedKey, EnvironmentWorkStats } from './resources/environments';

@@ -19,6 +19,7 @@ describe('Orca placeholder', () => {
     expect(orca.triggers.sessions).toBeDefined();
     expect(orca.guardrails).toBeDefined();
     expect(orca.modelPrices).toBeDefined();
+    expect(orca.modelPriceRules).toBeDefined();
     expect(orca.cloud.agents.providers).toBeDefined();
     expect(orca.cloud.apiResources).toBeDefined();
     expect(orca.cloud.catalog.kafka).toBeDefined();

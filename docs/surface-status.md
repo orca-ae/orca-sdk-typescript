@@ -2,7 +2,7 @@
 
 This document tracks which Orca API surfaces have SDK coverage in `@runorca/orca-sdk` and what is intentionally absent today. It is updated whenever an operation lands or is removed.
 
-Three specs plus a deployment overlay govern the surface (see `AGENTS.md` §1): `openapi/managed-agents.yaml` defines core operations, `openapi/managed-agents-deployment.overlay.yaml` records core portability differences, `openapi/managed-agents-extensions.yaml` defines the engine-owned policy and pricing extension groups, and `openapi/cloud-extensions.yaml` governs `orca.cloud.*`.
+Three specs plus a deployment overlay govern the surface (see `AGENTS.md` §1): `openapi/managed-agents.yaml` defines core operations, `openapi/managed-agents-deployment.overlay.yaml` records core portability differences, `openapi/managed-agents-engine.yaml` is the complete raw public engine artifact governing policy, pricing v1/v2, runtime, and the expressly supported engine-core extras; portable core operations remain governed by core + overlay, and `openapi/cloud-extensions.yaml` governs `orca.cloud.*`.
 
 The package-root `VERSION` export and the client's User-Agent report the version in `package.json`, including any release-candidate suffix. CommonJS and ESM builds expose the same version.
 
@@ -218,7 +218,7 @@ Guardrail type discovery and lifecycle, and Agent/Session Guardrail attachment.
 
 | Method | Description |
 |---|---|
-| `orca.guardrails.create(params)` | Create a builtin or expression guardrail |
+| `orca.guardrails.create(params)` | Create a builtin, expression, or Dogwood guardrail |
 | `orca.guardrails.list(params?)` | Paginated list, optionally including archived guardrails |
 | `orca.guardrails.retrieve(guardrailId)` | Retrieve a guardrail |
 | `orca.guardrails.update(guardrailId, params)` | Partially update a guardrail (POST per the spec) |
@@ -240,7 +240,7 @@ and retrieval by model ID and provider.
 
 ### Hosted extensions — `orca.cloud.*`
 
-Operations served under `/apis/cloud.sn.io/v1/*`, the hosted extension group — not the core engine. Every method below throws `ExtensionNotAvailableError` when called against a deployment that doesn't advertise the `cloud.sn.io` extension group via `GET /apis`. Discovery uses the cloud call's per-request deployment and controls, caches successful results per effective deployment URL, and isolates concurrent probes that carry explicit request controls (see `AGENTS.md` §5 and §10).
+Operations served under `/apis/cloud.sn.io/v1/*`, the hosted extension group — not the core engine. Every method below throws `ExtensionNotAvailableError` when called against a deployment that doesn't advertise the `cloud.sn.io` extension group via `GET /apis`. Discovery uses the cloud call's per-request deployment and controls, caches successful results per effective deployment URL, and isolates concurrent probes that carry explicit request controls (see `AGENTS.md` §5 and §10). Advertised capabilities remain cached regardless of age. A missing group or version triggers one refresh when the last successful discovery fetch is at least 15 seconds old; a fresh miss sends no additional discovery request. Refresh failures surface their API/transport error and preserve the previous snapshot and timestamp, so another call can retry immediately. Compatible concurrent refreshes share one request.
 
 #### Cloud agent providers — `orca.cloud.agents.providers`
 
@@ -386,3 +386,30 @@ Returns an ergonomic `SessionHandle` with `.events`, `.resources`, `.files`, and
 ## Deliberately unsupported
 
 `validateConfigs` (`PUT /connectors/kafka/connector-plugins/{pluginName}/config/validate`) is not exposed because the spec declares no successful response; its only response is HTTP 400 stating that validation is unsupported. `tests/cloud-extensions-contract.test.ts` keeps this exception explicit while requiring every other operationId to remain mapped to a callable SDK method.
+
+## Engine contract alignment
+
+The full engine artifact does not replace the portable core contract or its deployment overlay. The SDK adds only the engine extras listed here; it does not infer core discovery methods from the raw artifact. Contract tests classify all 114 public engine operations as implemented or explicitly excluded. Admin/internal APIs outside that public artifact are excluded.
+
+| Method | Engine-only behavior |
+|---|---|
+| `orca.guardrails.effective(params?, options?)` | GET effectiveguardrails; accepts comma-separated `rule_kinds` and `guardrail_capabilities`; pass `If-None-Match` through options.headers |
+| `orca.guardrails.dogwoodSchema(options?)` | Policy language base/event schemas and limits |
+| `orca.discovery.pricingV2GroupResources(options?)` | Pricing v2 resource discovery with optional `required_features` |
+| `orca.modelPriceRules.list(params?, options?)` | Pricing v2 snapshot rules; requires both the pricing group and advertised v2 |
+| `orca.discovery.runtimeGroupResources(options?)` | Runtime group resource discovery |
+| `orca.discovery.harnesses(options?)` | Runtime harness capabilities and models |
+| `orca.environments.rotateKey(id, options?)` | Rotate environment worker key; returns secret and expiry |
+| `orca.environments.revokeKey(id, options?)` | Revoke environment worker key; returns environment |
+| `orca.environments.workStats(id, options?)` | Queue depth, in-flight count, worker connectivity |
+| `orca.sessions.threads.interrupt(sessionId, threadId, options?)` | Interrupt one thread; existing `user.interrupt` event support remains available |
+
+Environment key rotation and thread interrupt default to `maxRetries: 0` even when the client enables retries. Interrupt may append a terminal event before returning 502 from indexing; retrying can duplicate the event. An explicit per-call numeric `maxRetries` overrides the action default; `undefined` keeps zero. Other operations retain the client's retry settings.
+
+Guardrails accept `mode: 'enforce' | 'observe'`, return optional `warnings`, and declare `workspace_window` state scope. Dogwood requests carry `kind`, `policy`, optional `applies_to`, `history`, and `mcp_manifests`. Request `GuardrailRule` remains a closed known-kind union. Response `GuardrailResponseRule` preserves unknown kinds and raw fields: use exported `isGuardrailBuiltinRule`, `isGuardrailExpressionRule`, and `isGuardrailDogwoodRule` for shape narrowing. The SDK decodes JSON without runtime schema validation; malformed known shapes remain raw data, and these guards reject structurally malformed variants. Existing exhaustive switches need a Dogwood case and a fallback for response kinds. Response `mode` is optional for compatibility with older servers and existing typed fixtures.
+
+Effective exchanges return the bundle on HTTP 200 or `null` on HTTP 304; `await orca.guardrails.effective(params, options).withResponse()` preserves ETag, Cache-Control, and all Orca-Guardrail lease headers for both statuses. Only this GET operation accepts 304. No policy cache or lease-renewal subsystem is added.
+
+`ModelPriceRulePage` preserves `catalog_id`, `generation`, `digest`, `published_at`, `expires_at`, `required_features`, and `conditional_models` on every page. `getNextPage()` keeps the specialized class, cursor and request options; automatic iteration uses the same pages. Unknown feature names are preserved as strings. A 410 cursor error stops iteration and is never restarted. No billing calculation or catalog cache is implemented.
+
+Explicit exclusions: `discovery.coreVersions` (not portable core discovery); `health.healthz` and `health.readyz` (deployment probes); `agents.delete` (portable overlay forbids it); `gitCreds.resolveCreds` (internal worker exchange); `gitProxy.uploadPack` and `gitProxy.advertise` (special JWT and binary Git protocol); `outcomes.get` and `skills.getVersionContent` (outside the explicitly supported engine-core extras). Hosted extension behavior is unchanged.

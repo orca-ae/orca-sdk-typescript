@@ -19,7 +19,8 @@ export type GuardrailPhase =
 
 export type GuardrailScope = 'organization' | 'workspace' | 'explicit';
 export type GuardrailVerdict = 'ask' | 'deny';
-export type GuardrailStateScope = 'turn' | 'session' | 'subject_window';
+export type GuardrailStateScope = 'turn' | 'session' | 'subject_window' | 'workspace_window';
+export type GuardrailMode = 'enforce' | 'observe';
 
 export interface GuardrailBuiltinRule {
   kind: 'builtin';
@@ -34,7 +35,105 @@ export interface GuardrailExpressionRule {
   reason?: string;
 }
 
-export type GuardrailRule = GuardrailBuiltinRule | GuardrailExpressionRule;
+export interface GuardrailDogwoodRule {
+  kind: 'dogwood';
+  policy: string;
+  applies_to?: 'all_tools' | 'mcp_tools';
+  history?: 'session' | 'principal';
+  mcp_manifests?: Array<{ server: string; url: string; tools: Record<string, unknown>[] }>;
+}
+
+/** Known request variants; responses can also carry future rule kinds. */
+export type GuardrailRule = GuardrailBuiltinRule | GuardrailExpressionRule | GuardrailDogwoodRule;
+export interface GuardrailUnknownRule {
+  kind: string;
+  [key: string]: unknown;
+}
+export type GuardrailResponseRule = GuardrailRule | GuardrailUnknownRule;
+
+/** Narrow a decoded response without treating malformed known kinds as valid. */
+export function isGuardrailBuiltinRule(rule: GuardrailResponseRule): rule is GuardrailBuiltinRule {
+  return (
+    rule.kind === 'builtin' &&
+    typeof rule['builtin'] === 'string' &&
+    (rule['params'] === undefined || isRecord(rule['params']))
+  );
+}
+
+/** Narrow an expression response rule, including its required verdict. */
+export function isGuardrailExpressionRule(rule: GuardrailResponseRule): rule is GuardrailExpressionRule {
+  return (
+    rule.kind === 'expression' &&
+    typeof rule['expression'] === 'string' &&
+    (rule['on_false'] === 'ask' || rule['on_false'] === 'deny') &&
+    (rule['reason'] === undefined || typeof rule['reason'] === 'string')
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Narrow a Dogwood response, including optional manifest shapes. */
+export function isGuardrailDogwoodRule(rule: GuardrailResponseRule): rule is GuardrailDogwoodRule {
+  const manifests = (rule as GuardrailUnknownRule)['mcp_manifests'];
+  return (
+    rule.kind === 'dogwood' &&
+    typeof rule['policy'] === 'string' &&
+    (rule['applies_to'] === undefined ||
+      rule['applies_to'] === 'all_tools' ||
+      rule['applies_to'] === 'mcp_tools') &&
+    (rule['history'] === undefined || rule['history'] === 'session' || rule['history'] === 'principal') &&
+    (manifests === undefined ||
+      (Array.isArray(manifests) &&
+        manifests.every(
+          (manifest) =>
+            isRecord(manifest) &&
+            typeof manifest['server'] === 'string' &&
+            typeof manifest['url'] === 'string' &&
+            Array.isArray(manifest['tools']) &&
+            manifest['tools'].every(isRecord),
+        )))
+  );
+}
+
+export interface GuardrailEffectiveParams {
+  rule_kinds?: string;
+  guardrail_capabilities?: string;
+}
+
+export interface EffectiveGuardrail {
+  id: string;
+  name: string;
+  tier: 'session' | 'agent' | 'workspace' | 'organization';
+  phases: string[];
+  rule?: unknown;
+  stateful: boolean;
+  mode: GuardrailMode;
+  state_scope?: GuardrailStateScope;
+  subagent_id?: string;
+}
+
+export interface EffectiveGuardrailBundle {
+  schema: '1';
+  bundle_id: string;
+  generation: number;
+  scope: { org_id: string; workspace_id: string };
+  runtime_config_revision: string;
+  issued_at: string;
+  expires_at: string;
+  seed_verdict: 'allow';
+  guardrails: EffectiveGuardrail[];
+  omitted_rules: number;
+}
+
+export interface GuardrailDogwoodSchema {
+  base_schema: string;
+  event_schemas: { session: string; principal: string };
+  language_version: string;
+  core_version: string;
+  limits: Record<string, unknown>;
+}
 
 export interface Guardrail {
   id: string;
@@ -44,7 +143,9 @@ export interface Guardrail {
   enabled: boolean;
   phases: GuardrailPhase[];
   scope: GuardrailScope;
-  rule: GuardrailRule;
+  rule: GuardrailResponseRule;
+  mode?: GuardrailMode;
+  warnings?: string[];
   metadata?: Record<string, string>;
   archived_at: string | null;
   created_at: string;
@@ -73,6 +174,7 @@ export interface GuardrailTypeList {
 }
 
 export interface GuardrailCreateParams {
+  mode?: GuardrailMode;
   name: string;
   description?: string | null;
   enabled?: boolean;
@@ -83,6 +185,7 @@ export interface GuardrailCreateParams {
 }
 
 export interface GuardrailUpdateParams {
+  mode?: GuardrailMode;
   name?: string;
   description?: string | null;
   enabled?: boolean;
@@ -97,6 +200,33 @@ export interface GuardrailListParams extends PageCursorParams {
 }
 
 export class Guardrails extends APIResource {
+  /**
+   * Exchange the effective policy bundle; 304 resolves to null. Lease headers remain available via withResponse().
+   * @example
+   * const { data, response } = await orca.guardrails.effective({}, { headers: { 'If-None-Match': etag } }).withResponse();
+   */
+  effective(
+    params: GuardrailEffectiveParams = {},
+    options?: RequestOptions,
+  ): APIPromise<EffectiveGuardrailBundle | null> {
+    return this._client.get(
+      '/apis/policy.runorca.ai/v1/effectiveguardrails',
+      extensionGate(this._client, POLICY_EXTENSION_GROUP, { query: params, ...options }),
+    );
+  }
+
+  /**
+   * Retrieve the policy language schema and runtime limits.
+   * @example
+   * const schema = await orca.guardrails.dogwoodSchema();
+   */
+  dogwoodSchema(options?: RequestOptions): APIPromise<GuardrailDogwoodSchema> {
+    return this._client.get(
+      '/apis/policy.runorca.ai/v1/policyschemas/dogwood',
+      extensionGate(this._client, POLICY_EXTENSION_GROUP, options),
+    );
+  }
+
   /**
    * Create a guardrail on a deployment that serves the policy extension.
    *

@@ -45,7 +45,7 @@ Three vendored OpenAPI specs and the core deployment overlay define the SDK surf
 |---|---|---|
 | `openapi/managed-agents.yaml` | No `servers` entry; paths carry `/v1`, `/api`, or `/apis` explicitly. | Core resources: `orca.agents` (+`.versions`), `orca.sessions` (+`.events`, `.files`, `.resources`, `.threads(.events)`), `orca.environments`, `orca.files`, `orca.skills` (+`.versions`), `orca.vaults` (+`.credentials`), `orca.memoryStores` (+`.memories`, `.memoryVersions`), `orca.triggers` (+`.sessions`), `orca.discovery`. |
 | `openapi/managed-agents-deployment.overlay.yaml` | Applies to `managed-agents.yaml`; it has no independent server URL. | Deployment deviations from the core contract. Its removal actions define fields, parameters, and operations that are not portable across both supported backends. |
-| `openapi/managed-agents-extensions.yaml` | Paths carry `/apis/policy.runorca.ai/v1` or `/apis/pricing.runorca.ai/v1` explicitly. | Engine extensions: `orca.guardrails`, `orca.modelPrices`, and their API-resource discovery methods. |
+| `openapi/managed-agents-engine.yaml` | Full raw public engine artifact; paths carry their full prefixes. | Engine policy, pricing v1/v2, runtime discovery, and explicitly supported engine-core extras. Portable operations remain governed by core + overlay. |
 | `openapi/cloud-extensions.yaml` | `/apis/cloud.sn.io/v1` | The complete `orca.cloud.*` namespace: API-resource discovery, agent providers, catalogs, connections, functions, health, packages, sink/source connectors, and Kafka Connect. |
 
 For core APIs, start from `managed-agents.yaml` and then apply the portability rules encoded by `managed-agents-deployment.overlay.yaml`:
@@ -83,7 +83,7 @@ Branding rule: this SDK does not reference any upstream vendor (codename, compan
 openapi/
   managed-agents.yaml                       # Core contract
   managed-agents-deployment.overlay.yaml    # Core deployment deviations
-  managed-agents-extensions.yaml            # Engine policy and pricing extensions
+  managed-agents-engine.yaml                # Full public engine contract (scoped extras only)
   cloud-extensions.yaml                     # orca.cloud.* contract
 
 src/
@@ -168,7 +168,7 @@ If the spec verb feels wrong, push back upstream. Do not silently "correct" it i
 `baseURL` is the **host root**. Every path literal in `src/resources/` carries its own full prefix — nothing about it is implicit in the client.
 
 - **Core resources** (governed by `managed-agents.yaml`) start with `/v1/...` — e.g. `/v1/agents`, `/v1/vaults/{id}/credentials/{id}`. There is no `/registry` infix any more.
-- **Engine extension resources** start with `/apis/policy.runorca.ai/v1/...` or `/apis/pricing.runorca.ai/v1/...` and route their options through `extensionGate()` with the matching exported group constant.
+- **Engine extension resources** use `/apis/policy.runorca.ai/v1/...`, `/apis/pricing.runorca.ai/v1/...`, `/apis/pricing.runorca.ai/v2/...`, or `/apis/runtime.runorca.ai/v1/...` and route options through `extensionGate()`. Pricing v2 requires the group and version together. The explicitly supported engine-core extras retain their literal `/v1/...` paths; see `docs/surface-status.md`.
 - **`orca.cloud.*` resources** (governed by `cloud-extensions.yaml`) start with `/apis/cloud.sn.io/v1/...` — e.g. `/apis/cloud.sn.io/v1/connections`. The literal `cloud.sn.io` appears in each of these path strings by design, matching the "always write the literal path" rule below; the *gating* decision (whether to allow the call at all) references the single `CLOUD_EXTENSION_GROUP` constant in `src/internal/constants.ts` instead of re-deriving the group name from the path.
 - Archive endpoints are `POST /.../{id}/archive` — a sub-path, never the colon-action form `:archive`.
 - A handful of cloud function and connector action endpoints in the spec do use a colon. Mirror the spec literally: if it writes `/foo:restart`, the SDK uses `/foo:restart`.

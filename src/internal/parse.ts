@@ -62,7 +62,12 @@ export async function parseResponse(
     }
 
     // fetch refuses to read the body when the status code is 204.
-    if (response.status === 204) {
+    if (
+      response.status === 204 ||
+      (response.status === 304 &&
+        options.method === 'get' &&
+        options.path === '/apis/policy.runorca.ai/v1/effectiveguardrails')
+    ) {
       return null;
     }
 

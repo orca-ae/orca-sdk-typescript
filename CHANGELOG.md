@@ -4,9 +4,18 @@
 
 ### Changed
 
+- Replace the extracted engine extension contract with the byte-identical full public engine artifact; portable core + overlay and hosted extension contracts are unchanged. All 114 engine operations have explicit implementation/exclusion coverage.
+- Add Dogwood rules, enforce/observe mode, warnings, workspace-window state scope, forward-compatible response rules and exported shape guards. Existing exhaustive switches must handle Dogwood and unknown response kinds; request unions remain closed.
+- Add effective policy exchanges (200 bundle / 304 null with native response headers), Dogwood schema, pricing v2 discovery and snapshot-preserving model-price-rule pagination, runtime discovery, environment key/work-stat actions, and thread interrupt. Pricing v2 requires advertised v2; expired cursors stop with 410.
+
 - Releases now use Release Please: conventional commits update a release PR, and merging it builds and publishes the tagged SDK publicly to npmjs.org using Trusted Publishing. The scheduled RC and manual promotion workflows are replaced by a single release workflow with explicit publication retries. `package.json` is the version source of truth; the redundant `VERSION` file is removed.
 
 ### Fixed
+
+- Thread interrupt defaults to no automatic retries, overriding client-wide settings while preserving explicit per-call numeric overrides. A 502 can follow a successful terminal-event append, so retrying can duplicate the event.
+- Missing discovery groups and versions refresh after 15 seconds from the last successful fetch, allowing the same client to recover when a deployment gains capabilities. Positive capabilities stay cached; failed refreshes preserve the previous snapshot and timestamp and surface the actual error. Existing per-request controls and concurrent probe isolation remain intact.
+
+- Environment key rotation defaults to no automatic retries, overriding client-wide retry settings. Explicit per-call retry settings remain available. This prevents a late attempt from invalidating the key returned by another attempt.
 
 - Correct the public npm package scope to `@runorca/orca-sdk`. Installation commands, imports, build checks, and release validation now target the npm organization `runorca`; the GitHub repository and Trusted Publisher owner remain `orca-ae`.
 

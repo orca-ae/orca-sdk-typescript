@@ -39,6 +39,7 @@ export interface APIResourceDescription {
 }
 
 export interface APIResourceList {
+  required_features?: string[];
   kind: 'APIResourceList';
   group_version: string;
   resources: APIResourceDescription[];
@@ -47,6 +48,42 @@ export interface APIResourceList {
 // ---- Resource class ---------------------------------------------------------
 
 export class Discovery extends APIResource {
+  /**
+   * List resources of the pricing v2 group, including required feature names.
+   * @example
+   * const resources = await orca.discovery.pricingV2GroupResources();
+   */
+  pricingV2GroupResources(options?: RequestOptions): APIPromise<APIResourceList> {
+    return this._client.get(
+      '/apis/pricing.runorca.ai/v2',
+      extensionGate(this._client, PRICING_EXTENSION_GROUP, options, 'v2'),
+    );
+  }
+
+  /**
+   * List resources advertised by the engine runtime group.
+   * @example
+   * const resources = await orca.discovery.runtimeGroupResources();
+   */
+  runtimeGroupResources(options?: RequestOptions): APIPromise<APIResourceList> {
+    return this._client.get(
+      '/apis/runtime.runorca.ai/v1',
+      extensionGate(this._client, 'runtime.runorca.ai', options),
+    );
+  }
+
+  /**
+   * List engine harnesses and their supported models.
+   * @example
+   * const { data } = await orca.discovery.harnesses();
+   */
+  harnesses(options?: RequestOptions): APIPromise<HarnessList> {
+    return this._client.get(
+      '/apis/runtime.runorca.ai/v1/harnesses',
+      extensionGate(this._client, 'runtime.runorca.ai', options),
+    );
+  }
+
   /**
    * List the extension API groups this deployment serves. An empty
    * `groups` array means "no extensions installed" on a deployment that
@@ -97,4 +134,16 @@ export class Discovery extends APIResource {
       extensionGate(this._client, PRICING_EXTENSION_GROUP, options),
     );
   }
+}
+
+export interface Harness {
+  id: string;
+  provider: string;
+  modes: string[];
+  capabilities: { managed_skills: boolean; multiagent: boolean; native_resume: boolean };
+  models: Array<{ provider: string; id: string; efforts: string[] }>;
+}
+
+export interface HarnessList {
+  data: Harness[];
 }

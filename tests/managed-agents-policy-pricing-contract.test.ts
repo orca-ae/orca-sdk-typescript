@@ -16,6 +16,8 @@ type _SessionOverridesSupportGuardrails = Assert<HasAll<SessionAgentWithOverride
 const extensionOperations: Record<string, (orca: Orca) => unknown> = {
   'discovery.policyGroupResources': (orca) => orca.discovery.policyGroupResources,
   'discovery.pricingGroupResources': (orca) => orca.discovery.pricingGroupResources,
+  'guardrails.effective': (orca) => orca.guardrails.effective,
+  'guardrails.dogwoodSchema': (orca) => orca.guardrails.dogwoodSchema,
   'guardrails.archive': (orca) => orca.guardrails.archive,
   'guardrails.create': (orca) => orca.guardrails.create,
   'guardrails.delete': (orca) => orca.guardrails.delete,
@@ -28,7 +30,7 @@ const extensionOperations: Record<string, (orca: Orca) => unknown> = {
 };
 
 describe('managed-agents policy and pricing contract coverage', () => {
-  const spec = readFileSync(resolve(__dirname, '../openapi/managed-agents-extensions.yaml'), 'utf8');
+  const spec = readFileSync(resolve(__dirname, '../openapi/managed-agents-engine.yaml'), 'utf8');
   const operationIDs = [
     ...spec.matchAll(
       /^\s+operationId:\s+((?:guardrails|modelPrices)\.\S+|discovery\.(?:policy|pricing)GroupResources)$/gm,
