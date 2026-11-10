@@ -159,10 +159,10 @@ export class BaseOrca {
   protected _options: OrcaOptions;
 
   /** Successful `GET /apis` results, keyed by effective deployment URL. */
-  private extensionGroups = new Map<string, Set<string>>();
+  private extensionGroups = new Map<string, { groups: Set<string>; fetchedAt: number }>();
 
   /** In-flight default-control discovery requests, keyed by effective deployment URL. */
-  private extensionGroupsPromises = new Map<string, Promise<Set<string>>>();
+  private extensionGroupsPromises = new Map<string, Promise<{ groups: Set<string>; fetchedAt: number }>>();
 
   /**
    * Constructs a new Orca client.
@@ -820,23 +820,26 @@ export class BaseOrca {
    * use this shared capability check.
    *
    * Caching strategy: successful `GET /apis` results are cached per effective
-   * deployment URL. Concurrent initial calls share an in-flight request only
-   * when neither supplies per-call request controls; controlled calls probe
+   * deployment URL. Advertised capabilities stay cached; missing capabilities
+   * refresh after 15 seconds from the last successful fetch. Concurrent calls
+   * share an in-flight request only when neither supplies per-call request
+   * controls; controlled calls probe
    * independently so one caller's authentication, timeout, or abort signal
    * cannot affect another caller. A failed discovery attempt is not cached.
    *
    * Throws {@link Errors.ExtensionNotAvailableError} when `group` isn't
    * advertised. An empty (or non-matching) `groups` list is treated as a
    * normal, ungated deployment — not an error condition in itself. A 404
-   * from `/apis` itself (a deployment that predates the discovery
-   * endpoint) is folded into the same "unavailable" outcome but also logs
-   * a version warning, since that's a stronger signal of an outdated
-   * deployment than an empty list is.
+   * from initial discovery is folded into the same "unavailable" outcome
+   * with a version warning. Refresh errors preserve the previous successful
+   * snapshot and timestamp and propagate to the caller.
    */
   async ensureExtensionAvailable(group: string, options?: RequestOptions, version?: string): Promise<void> {
     const deploymentURL = options?.defaultBaseURL ?? this.baseURL;
-    let groups = this.extensionGroups.get(deploymentURL);
-    if (!groups) {
+    let snapshot = this.extensionGroups.get(deploymentURL);
+    const capability = version === undefined ? group : group + '/' + version;
+    if (snapshot?.groups.has(group) && snapshot.groups.has(capability)) return;
+    if (!snapshot || Date.now() - snapshot.fetchedAt >= 15_000) {
       const hasRequestControls =
         options?.headers !== undefined ||
         options?.maxRetries !== undefined ||
@@ -844,59 +847,60 @@ export class BaseOrca {
         options?.fetchOptions !== undefined ||
         options?.signal !== undefined;
 
-      if (hasRequestControls) {
-        groups = await this.fetchExtensionGroups(options);
-      } else {
-        let groupsPromise = this.extensionGroupsPromises.get(deploymentURL);
-        if (!groupsPromise) {
-          groupsPromise = this.fetchExtensionGroups(options).finally(() => {
-            this.extensionGroupsPromises.delete(deploymentURL);
-          });
-          this.extensionGroupsPromises.set(deploymentURL, groupsPromise);
+      try {
+        if (hasRequestControls) {
+          snapshot = await this.fetchExtensionGroups(options);
+        } else {
+          let groupsPromise = this.extensionGroupsPromises.get(deploymentURL);
+          if (!groupsPromise) {
+            groupsPromise = this.fetchExtensionGroups(options).finally(() => {
+              this.extensionGroupsPromises.delete(deploymentURL);
+            });
+            this.extensionGroupsPromises.set(deploymentURL, groupsPromise);
+          }
+          snapshot = await groupsPromise;
         }
-        groups = await groupsPromise;
-      }
-      this.extensionGroups.set(deploymentURL, groups);
-    }
-
-    if (!groups.has(group) || (version !== undefined && !groups.has(group + '/' + version))) {
-      throw new Errors.ExtensionNotAvailableError(
-        group,
-        `This deployment does not advertise the "${group}" extension group (GET /apis ` +
-          `groups: [${[...groups].join(', ')}]). This request requires a deployment that ` +
-          'serves the extension group.' + (version ? ' Required version: ' + version + '.' : ''),
-      );
-    }
-  }
-
-  private async fetchExtensionGroups(options?: RequestOptions): Promise<Set<string>> {
-    let groupList: DiscoveryAPI.APIGroupList;
-    try {
-      groupList = await this.get<DiscoveryAPI.APIGroupList>('/apis', {
-        ...(options?.defaultBaseURL !== undefined && { defaultBaseURL: options.defaultBaseURL }),
-        ...(options?.headers !== undefined && { headers: options.headers }),
-        ...(options?.maxRetries !== undefined && { maxRetries: options.maxRetries }),
-        ...(options?.timeout !== undefined && { timeout: options.timeout }),
-        ...(options?.fetchOptions !== undefined && { fetchOptions: options.fetchOptions }),
-        ...(options?.signal !== undefined && { signal: options.signal }),
-      });
-    } catch (err) {
-      if (err instanceof Errors.NotFoundError) {
-        // Pre-discovery deployment: `/apis` itself 404s. Different from a
-        // 200 with an empty `groups` array, which just means "no
-        // extensions installed" on a deployment that supports discovery.
+        this.extensionGroups.set(deploymentURL, snapshot);
+      } catch (err) {
+        if (!(err instanceof Errors.NotFoundError) || snapshot) throw err;
+        // Preserve the pre-discovery outcome without caching a failed fetch.
         loggerFor(this).warn(
           'GET /apis returned 404 — this deployment predates extension discovery and cannot ' +
             'serve any gated extension methods (e.g. `orca.cloud.*`). Confirm the server ' +
             'version if this is unexpected.',
         );
-        return new Set();
       }
-      throw err;
     }
-    return new Set(
-      groupList.groups.flatMap((g) => [g.name, ...g.versions.map((v) => g.name + '/' + v.version)]),
-    );
+
+    const groups = snapshot?.groups ?? new Set<string>();
+    if (!groups.has(group) || (version !== undefined && !groups.has(group + '/' + version))) {
+      throw new Errors.ExtensionNotAvailableError(
+        group,
+        `This deployment does not advertise the "${group}" extension group (GET /apis ` +
+          `groups: [${[...groups].join(', ')}]). This request requires a deployment that ` +
+          'serves the extension group.' +
+          (version ? ' Required version: ' + version + '.' : ''),
+      );
+    }
+  }
+
+  private async fetchExtensionGroups(
+    options?: RequestOptions,
+  ): Promise<{ groups: Set<string>; fetchedAt: number }> {
+    const groupList = await this.get<DiscoveryAPI.APIGroupList>('/apis', {
+      ...(options?.defaultBaseURL !== undefined && { defaultBaseURL: options.defaultBaseURL }),
+      ...(options?.headers !== undefined && { headers: options.headers }),
+      ...(options?.maxRetries !== undefined && { maxRetries: options.maxRetries }),
+      ...(options?.timeout !== undefined && { timeout: options.timeout }),
+      ...(options?.fetchOptions !== undefined && { fetchOptions: options.fetchOptions }),
+      ...(options?.signal !== undefined && { signal: options.signal }),
+    });
+    return {
+      groups: new Set(
+        groupList.groups.flatMap((g) => [g.name, ...g.versions.map((v) => g.name + '/' + v.version)]),
+      ),
+      fetchedAt: Date.now(),
+    };
   }
 
   // Static re-exports, so error classes and `Stream` are reachable from the client class (`Orca.APIError`).

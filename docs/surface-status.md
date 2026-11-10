@@ -240,7 +240,7 @@ and retrieval by model ID and provider.
 
 ### Hosted extensions — `orca.cloud.*`
 
-Operations served under `/apis/cloud.sn.io/v1/*`, the hosted extension group — not the core engine. Every method below throws `ExtensionNotAvailableError` when called against a deployment that doesn't advertise the `cloud.sn.io` extension group via `GET /apis`. Discovery uses the cloud call's per-request deployment and controls, caches successful results per effective deployment URL, and isolates concurrent probes that carry explicit request controls (see `AGENTS.md` §5 and §10).
+Operations served under `/apis/cloud.sn.io/v1/*`, the hosted extension group — not the core engine. Every method below throws `ExtensionNotAvailableError` when called against a deployment that doesn't advertise the `cloud.sn.io` extension group via `GET /apis`. Discovery uses the cloud call's per-request deployment and controls, caches successful results per effective deployment URL, and isolates concurrent probes that carry explicit request controls (see `AGENTS.md` §5 and §10). Advertised capabilities remain cached regardless of age. A missing group or version triggers one refresh when the last successful discovery fetch is at least 15 seconds old; a fresh miss sends no additional discovery request. Refresh failures surface their API/transport error and preserve the previous snapshot and timestamp, so another call can retry immediately. Compatible concurrent refreshes share one request.
 
 #### Cloud agent providers — `orca.cloud.agents.providers`
 
@@ -403,6 +403,8 @@ The full engine artifact does not replace the portable core contract or its depl
 | `orca.environments.revokeKey(id, options?)` | Revoke environment worker key; returns environment |
 | `orca.environments.workStats(id, options?)` | Queue depth, in-flight count, worker connectivity |
 | `orca.sessions.threads.interrupt(sessionId, threadId, options?)` | Interrupt one thread; existing `user.interrupt` event support remains available |
+
+Environment key rotation and thread interrupt default to `maxRetries: 0` even when the client enables retries. Interrupt may append a terminal event before returning 502 from indexing; retrying can duplicate the event. An explicit per-call numeric `maxRetries` overrides the action default; `undefined` keeps zero. Other operations retain the client's retry settings.
 
 Guardrails accept `mode: 'enforce' | 'observe'`, return optional `warnings`, and declare `workspace_window` state scope. Dogwood requests carry `kind`, `policy`, optional `applies_to`, `history`, and `mcp_manifests`. Request `GuardrailRule` remains a closed known-kind union. Response `GuardrailResponseRule` preserves unknown kinds and raw fields: use exported `isGuardrailBuiltinRule`, `isGuardrailExpressionRule`, and `isGuardrailDogwoodRule` for shape narrowing. The SDK decodes JSON without runtime schema validation; malformed known shapes remain raw data, and these guards reject structurally malformed variants. Existing exhaustive switches need a Dogwood case and a fallback for response kinds. Response `mode` is optional for compatibility with older servers and existing typed fixtures.
 

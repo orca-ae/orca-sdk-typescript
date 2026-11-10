@@ -12,6 +12,9 @@
 
 ### Fixed
 
+- Thread interrupt defaults to no automatic retries, overriding client-wide settings while preserving explicit per-call numeric overrides. A 502 can follow a successful terminal-event append, so retrying can duplicate the event.
+- Missing discovery groups and versions refresh after 15 seconds from the last successful fetch, allowing the same client to recover when a deployment gains capabilities. Positive capabilities stay cached; failed refreshes preserve the previous snapshot and timestamp and surface the actual error. Existing per-request controls and concurrent probe isolation remain intact.
+
 - Environment key rotation defaults to no automatic retries, overriding client-wide retry settings. Explicit per-call retry settings remain available. This prevents a late attempt from invalidating the key returned by another attempt.
 
 - Correct the public npm package scope to `@runorca/orca-sdk`. Installation commands, imports, build checks, and release validation now target the npm organization `runorca`; the GitHub repository and Trusted Publisher owner remain `orca-ae`.
