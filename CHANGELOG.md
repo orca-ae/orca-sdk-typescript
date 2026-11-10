@@ -12,6 +12,8 @@
 
 ### Fixed
 
+- Environment key rotation defaults to no automatic retries, overriding client-wide retry settings. Explicit per-call retry settings remain available. This prevents a late attempt from invalidating the key returned by another attempt.
+
 - Correct the public npm package scope to `@runorca/orca-sdk`. Installation commands, imports, build checks, and release validation now target the npm organization `runorca`; the GitHub repository and Trusted Publisher owner remain `orca-ae`.
 
 - The exported SDK version and User-Agent now match `package.json`, including release-candidate versions. Lint, test, and build synchronize the version automatically, and the build verifies both CommonJS and ESM exports against the package version.

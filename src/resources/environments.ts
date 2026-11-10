@@ -135,11 +135,17 @@ export interface EnvironmentListParams extends PageCursorParams {
 export class Environments extends APIResource {
   /**
    * Rotate the engine environment's worker key. Store the returned secret securely.
+   * Retries default to zero: a late attempt can invalidate a returned key.
+   * Explicit per-call maxRetries overrides this action default.
    * @example
    * const key = await orca.environments.rotateKey('env_id');
    */
   rotateKey(envId: string, options?: RequestOptions): APIPromise<EnvironmentRotatedKey> {
-    return this._client.post(path`/v1/environments/${envId}/rotate-key`, { body: {}, ...options });
+    return this._client.post(path`/v1/environments/${envId}/rotate-key`, {
+      body: {},
+      ...options,
+      maxRetries: options?.maxRetries ?? 0,
+    });
   }
 
   /**
