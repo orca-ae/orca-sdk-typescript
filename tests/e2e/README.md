@@ -31,11 +31,21 @@ Model Price retrieval. Missing extension groups fail the suite.
 
 Session cleanup uses `POST /v1/sessions/{id}/archive` and checks `archived_at`.
 
-The workflow requires `SNBOT_GITHUB_TOKEN` for engine source access. It
-begins with a gate that skips the job when the secret is not configured, and
-on fork pull requests, rather than failing: a repository that never configured
-it is not misconfigured, and a permanently red workflow teaches everyone to
-ignore it.
+The workflow requires `SNBOT_GITHUB_TOKEN` for engine source and GHCR access.
+Because that token is stored in the test cluster's image pull secret, every script
+running on the E2E runner must be trusted. The workflow runs only on pushes to
+`main`, nightly schedules, or manual dispatches selecting `main` in the canonical
+repository. Both jobs enforce the event/ref boundary before using credentials,
+and checkout pins the SDK to the triggering `github.sha` without persisting Git
+credentials. A missing source token explicitly skips the E2E job.
+
+All pull requests, including same-repository PRs, run the secretless lint, unit
+and build CI instead. This intentionally moves full-stack validation after merge;
+do not add a PR label override or dispatch an arbitrary PR SHA with credentials.
+Keep `main` protected and use a dedicated least-privilege read-only source/package
+token. The workflow does not create or change repository protection or secrets.
+The credential-bearing job uses a fresh GitHub-hosted runner and does not restore
+package caches populated by other workflows.
 
 The workflow uploads no artifacts, because GitHub does not mask those.
 

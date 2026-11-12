@@ -68,8 +68,9 @@ other fails. See [tests/integration/README.md](tests/integration/README.md).
 
 End-to-end tests stand up the engine in a kind cluster with Helm and run the built SDK directly
 against it. They need `yarn build` first and access to the engine's source revision for its Helm
-chart; see [tests/e2e/README.md](tests/e2e/README.md). CI runs them nightly and on same-repository
-pull requests.
+chart; see [tests/e2e/README.md](tests/e2e/README.md). CI runs them nightly, on pushes to `main`, and on manual dispatches selecting `main`.
+Full-stack E2E does not run before merge; all pull requests retain the secretless lint, unit-test,
+and build jobs in `ci.yml`.
 
 ## CI configuration
 
@@ -90,7 +91,8 @@ in seconds, which is the tell.
 | `release.yml` | Actions PR creation permission; npm Trusted Publisher and GitHub environment `npm` | release preparation or publication fails |
 
 Maintainers set repository secrets under **Settings → Secrets and variables → Actions**. The
-end-to-end and integration jobs never run on pull requests from forks, which get no secrets.
+end-to-end workflow rejects all pull requests and non-`main` dispatches before reading secrets.
+The separate integration workflow never runs on pull requests from forks, which get no secrets.
 
 Releases use Release Please and npm OIDC rather than a stored npm token. Maintainers must complete
 the setup in [RELEASING.md](RELEASING.md) before merging the first release PR. Release Please PRs
