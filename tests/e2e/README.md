@@ -31,11 +31,13 @@ Model Price retrieval. Missing extension groups fail the suite.
 
 Session cleanup uses `POST /v1/sessions/{id}/archive` and checks `archived_at`.
 
-The workflow requires `SNBOT_GITHUB_TOKEN` for engine source access. It
-begins with a gate that skips the job when the secret is not configured, and
-on fork pull requests, rather than failing: a repository that never configured
-it is not misconfigured, and a permanently red workflow teaches everyone to
-ignore it.
+The workflow uses the configured source and image access settings. It runs on pushes to
+`main`, nightly schedules, and manual dispatches selecting `main` in the canonical repository.
+Each run checks out its triggering commit SHA on a fresh GitHub-hosted runner without package
+cache reuse. Missing source configuration explicitly skips the job.
+
+Pull requests retain lint, unit tests and builds. Full-stack E2E runs after merge.
+Repository administration and access configuration are managed separately.
 
 The workflow uploads no artifacts, because GitHub does not mask those.
 

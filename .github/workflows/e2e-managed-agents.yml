@@ -4,7 +4,6 @@
 name: E2E - Managed Agents direct
 
 on:
-  pull_request:
   push:
     branches: [main]
   schedule:
@@ -22,27 +21,23 @@ concurrency:
 jobs:
   secret-gate:
     name: Check Managed Agents source access
+    # Check the event/ref before any step can receive the shared source token.
+    if: >-
+      github.repository == 'orca-ae/orca-sdk-typescript' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       enabled: ${{ steps.gate.outputs.enabled }}
     steps:
-      # A repository that never configured this secret (a fork, or a fresh clone) is not
-      # misconfigured, and a permanently red workflow teaches everyone to ignore it, so skip
-      # rather than fail. A skipped job finishes in seconds, which is the tell.
+      # Missing source credentials skip the trusted-main E2E job explicitly.
       - name: Decide whether the E2E job can run
         id: gate
         env:
-          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           SNBOT_GITHUB_TOKEN: ${{ secrets.SNBOT_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && \
-                "${PR_HEAD_REPOSITORY:-}" != "${GITHUB_REPOSITORY}" ]]; then
-            echo "enabled=false" >> "${GITHUB_OUTPUT}"
-            echo "Skipping internal-source E2E for a fork pull request."
-            exit 0
-          fi
           if [[ -z "${SNBOT_GITHUB_TOKEN:-}" ]]; then
             echo "enabled=false" >> "${GITHUB_OUTPUT}"
             echo "::notice::SNBOT_GITHUB_TOKEN is not configured; skipping the E2E job."
@@ -53,8 +48,12 @@ jobs:
   e2e:
     name: SDK against pinned Managed Agents stack
     needs: secret-gate
-    if: needs.secret-gate.outputs.enabled == 'true'
-    runs-on: ${{ vars.E2E_RUNNER || 'ubuntu-latest' }}
+    if: >-
+      needs.secret-gate.outputs.enabled == 'true' &&
+      github.repository == 'orca-ae/orca-sdk-typescript' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       KIND_CLUSTER_NAME: orca-sdk-managed-agents
@@ -62,6 +61,9 @@ jobs:
     steps:
       - name: Check out SDK
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Resolve dependency settings
         id: dependencies
@@ -79,7 +81,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: yarn
 
       - run: yarn install --frozen-lockfile
       - run: yarn build
